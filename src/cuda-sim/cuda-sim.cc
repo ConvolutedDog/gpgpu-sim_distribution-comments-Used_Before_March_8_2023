@@ -208,7 +208,8 @@ unsigned int intLOGB2(unsigned int v) {
 此函数用于将纹理引用（texref）绑定到cudaArray（array）上，以实现对纹理的读取操作。
 首先，根据texref获取纹理名称texname，然后查找m_NameToCudaArray中是否存在texname，如果存在，则先将
 其解绑，再将texname和array绑定到m_NameToCudaArray中。
-然后，计算texel_size_bits，texel_size，Tx和Ty，并将Tx，Ty，Tx_numbits，Ty_numbits，texel_size和texel_size_numbits放入textureInfo中，将textureInfo放入m_NameToTextureInfo中。
+然后，计算texel_size_bits，texel_size，Tx和Ty，并将Tx，Ty，Tx_numbits，Ty_numbits，texel_size和
+texel_size_numbits放入textureInfo中，将textureInfo放入m_NameToTextureInfo中。
 */
 void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(
     const struct textureReference *texref, const struct cudaArray *array) {
@@ -795,18 +796,19 @@ opcodes.def文件中都有其对应的PTX指令操作码。
 atom与red指令）在指定level执行，然后此线程在membar指令之后请求的后续内存操作才会执行。
 2. SSY_OP = ssy：最新的PTX手册没有提到这一指令，公开存在的唯一证据是cuobjdump的反汇编输出，处理分支时
 使用。
-3. BRA_OP = bar：在CTA内执行屏障同步和通信。
-4. RET_OP = ret：调用后从函数返回到指令。将执行返回到调用方的环境。发散返回将挂起线程，直到所有线程都准
+3. BRA_OP = bra：跳转到目标指令。
+4. BAR_OP = bar：在CTA内执行屏障同步和通信。
+5. RET_OP = ret：调用后从函数返回到指令。将执行返回到调用方的环境。发散返回将挂起线程，直到所有线程都准
 备好返回调用方。这允许多个不同的ret指令。
-5. RETP_OP = retp：最新的PTX手册没有提到这一指令，应该与ret指令类似的功能。
-6. NOP_OP = nop：空指令。
-7. EXIT_OP = exit：终止线程。
-8. CALLP_OP = callp：声明用于间接调用的原型。定义没有特定函数名的原型，并将原型与标签关联。然后，原型可
+6. RETP_OP = retp：最新的PTX手册没有提到这一指令，应该与ret指令类似的功能。
+7. NOP_OP = nop：空指令。
+8. EXIT_OP = exit：终止线程。
+9. CALLP_OP = callp：声明用于间接调用的原型。定义没有特定函数名的原型，并将原型与标签关联。然后，原型可
 用于间接调用指令，其中不完全了解可能的调用目标。
-9. CALL_OP = call：调用一个函数，记录返回位置。
-10. CVT_OP = cvt：将值从一种类型转换为另一种类型。
-11. SET_OP = set：使用关系运算符比较两个数值，并通过应用布尔运算符将此结果与谓词值组合（可选）。
-12. SLCT_OP = slct：根据第三个操作数的符号选择一个源操作数。
+10. CALL_OP = call：调用一个函数，记录返回位置。
+11. CVT_OP = cvt：将值从一种类型转换为另一种类型。
+12. SET_OP = set：使用关系运算符比较两个数值，并通过应用布尔运算符将此结果与谓词值组合（可选）。
+13. SLCT_OP = slct：根据第三个操作数的符号选择一个源操作数。
 */
 void ptx_instruction::set_fp_or_int_archop() {
   oprnd_type = UN_OP;
@@ -815,6 +817,7 @@ void ptx_instruction::set_fp_or_int_archop() {
       (m_opcode == NOP_OP) || (m_opcode == EXIT_OP) || (m_opcode == CALLP_OP) ||
       (m_opcode == CALL_OP)) {
     // do nothing
+    //这些指令不涉及操作数的数据类型。
   } else if ((m_opcode == CVT_OP || m_opcode == SET_OP ||
               m_opcode == SLCT_OP)) {
     //例如指令：cvt.frnd2{.relu}.f16x2.f32  d, a, b; 是将FP32类型的源操作数a和b转换为两个FP16类型，并
@@ -827,7 +830,7 @@ void ptx_instruction::set_fp_or_int_archop() {
       oprnd_type = INT_OP;
 
   } else {
-    //其余指令字符串只有一个操作类型，因此直接用get_type()获取即可。
+    //其余指令字符串只有一个操作数，因此直接用get_type()获取即可。
     if (get_type() == F16_TYPE || get_type() == F32_TYPE ||
         get_type() == F64_TYPE || get_type() == FF64_TYPE) {
       oprnd_type = FP_OP;
@@ -846,31 +849,44 @@ void ptx_instruction::set_mul_div_or_other_archop() {
       (m_opcode != BAR_OP) && (m_opcode != EXIT_OP) && (m_opcode != NOP_OP) &&
       (m_opcode != RETP_OP) && (m_opcode != RET_OP) && (m_opcode != CALLP_OP) &&
       (m_opcode != CALL_OP)) {
+    //这些指令不涉及操作数的数据类型，因此没有乘除或者其他类型的计算操作。
+    //用get_type()获取操作数的数据类型，包括F32_TYPE/F64_TYPE/FF64_TYPE。最新的PTX指令集手册里包含的
+    //数据类型有：
+    //PTX指令集手册里定义的基本类型说明符：
+    //Basic Type         |  Fundamental Type Specifiers
+    //--------------------------------------------------
+    //Signed integer     |  .s8, .s16, .s32, .s64
+    //Unsigned integer   |  .u8, .u16, .u32, .u64
+    //Floating-point     |  .f16, .f16x2, .f32, .f64
+    //Bits (untyped)     |  .b8, .b16, .b32, .b64
+    //Predicate          |  .pred
+    //其中，F32_TYPE指FP32数据类型，F64_TYPE指FP64数据类型，FF64_TYPE最新的PTX指令集手册没有找到。
     if (get_type() == F32_TYPE || get_type() == F64_TYPE ||
         get_type() == FF64_TYPE) {
+      //get_opcode()在ptx_ir.h中定义，获取指令的操作码。
       switch (get_opcode()) {
-        case MUL_OP:
-        case MAD_OP:
+        case MUL_OP:   //乘法
+        case MAD_OP:   //乘加
           sp_op = FP_MUL_OP;
           break;
-        case DIV_OP:
+        case DIV_OP:   //除法
           sp_op = FP_DIV_OP;
           break;
-        case LG2_OP:
+        case LG2_OP:   //对数计算
           sp_op = FP_LG_OP;
           break;
-        case RSQRT_OP:
-        case SQRT_OP:
+        case RSQRT_OP: //开平方+取倒数
+        case SQRT_OP:  //开平方
           sp_op = FP_SQRT_OP;
           break;
-        case RCP_OP:
+        case RCP_OP:   //取倒数->用除法实现
           sp_op = FP_DIV_OP;
           break;
-        case SIN_OP:
-        case COS_OP:
+        case SIN_OP:   //Sin函数
+        case COS_OP:   //Cos函数
           sp_op = FP_SIN_OP;
           break;
-        case EX2_OP:
+        case EX2_OP:   //乘方计算
           sp_op = FP_EXP_OP;
           break;
         default:
@@ -878,20 +894,22 @@ void ptx_instruction::set_mul_div_or_other_archop() {
           break;
       }
     } else {
+      //除F32_TYPE/F64_TYPE/FF64_TYPE浮点数据类型外，还有些整数/无类型的数据类型。
       switch (get_opcode()) {
-        case MUL24_OP:
-        case MAD24_OP:
+        case MUL24_OP: //两个24位整数乘法
+        case MAD24_OP: //三个24位整数乘加
           sp_op = INT_MUL24_OP;
           break;
-        case MUL_OP:
-        case MAD_OP:
+        case MUL_OP:   //乘法
+        case MAD_OP:   //乘加
+          //U32_TYPE指无符号32位整数，S32_TYPE指有符号32位整数，B32_TYPE指无类型的32位数。
           if (get_type() == U32_TYPE || get_type() == S32_TYPE ||
               get_type() == B32_TYPE)
             sp_op = INT_MUL32_OP;
           else
             sp_op = INT_MUL_OP;
           break;
-        case DIV_OP:
+        case DIV_OP:   //除法
           sp_op = INT_DIV_OP;
           break;
         default:
@@ -902,6 +920,30 @@ void ptx_instruction::set_mul_div_or_other_archop() {
   }
 }
 
+/*
+不同的屏障操作有不同类型，例如PTX指令集手册9.7.12节中给出了如下并行同步和通信指令：
+‣ bar{.cta}, barrier{.cta}
+‣ barrier.cluster
+‣ bar.warp.sync
+‣ membar
+‣ atom
+‣ red
+‣ vote
+‣ match.sync
+‣ activemask
+‣ redux.sync
+‣ griddepcontrol
+‣ elect.sync
+‣ mbarrier.init
+‣ mbarrier.inval
+‣ mbarrier.arrive
+‣ mbarrier.arrive_drop
+‣ mbarrier.test_wait
+‣ mbarrier.try_wait
+‣ mbarrier.pending_count
+‣ cp.async.mbarrier.arrive
+??? 需要用到再补充。
+*/
 void ptx_instruction::set_bar_type() {
   if (m_opcode == BAR_OP) {
     switch (m_barrier_op) {

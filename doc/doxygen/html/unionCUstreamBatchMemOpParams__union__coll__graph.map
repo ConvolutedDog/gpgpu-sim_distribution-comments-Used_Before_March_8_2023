@@ -1,0 +1,10 @@
+<map id="CUstreamBatchMemOpParams_union" name="CUstreamBatchMemOpParams_union">
+<area shape="rect" id="node1" title=" " alt="" coords="783,262,989,303"/>
+<area shape="rect" id="node2" href="$structCUstreamBatchMemOpParams__union_1_1CUstreamMemOpFlushRemoteWritesParams__st.html" title=" " alt="" coords="373,255,621,311"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,107,268,133"/>
+<area shape="rect" id="node5" href="$structCUstreamBatchMemOpParams__union_1_1CUstreamMemOpWaitValueParams__st.html" title=" " alt="" coords="382,127,613,183"/>
+<area shape="rect" id="node7" href="$structCUstreamBatchMemOpParams__union_1_1CUstreamMemOpWriteValueParams__st.html" title=" " alt="" coords="380,437,615,493"/>
+<area shape="rect" id="node4" title=" " alt="" coords="99,347,174,373"/>
+<area shape="rect" id="node6" title=" " alt="" coords="77,5,196,32"/>
+<area shape="rect" id="node8" title=" " alt="" coords="77,507,196,533"/>
+</map>

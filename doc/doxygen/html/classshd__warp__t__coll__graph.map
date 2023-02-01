@@ -1,0 +1,52 @@
+<map id="shd_warp_t" name="shd_warp_t">
+<area shape="rect" id="node1" title=" " alt="" coords="4563,2243,4652,2269"/>
+<area shape="rect" id="node2" href="$structshd__warp__t_1_1ibuffer__entry.html" title=" " alt="" coords="4766,1677,4897,1719"/>
+<area shape="rect" id="node3" href="$classwarp__inst__t.html" title=" " alt="" coords="4344,1270,4434,1297"/>
+<area shape="rect" id="node42" href="$classldst__unit.html" title=" " alt="" coords="1974,1894,2044,1921"/>
+<area shape="rect" id="node4" href="$classinst__t.html" title=" " alt="" coords="3856,885,3911,911"/>
+<area shape="rect" id="node5" title=" " alt="" coords="4593,389,4734,416"/>
+<area shape="rect" id="node6" title=" " alt="" coords="3102,389,3278,416"/>
+<area shape="rect" id="node7" title=" " alt="" coords="3303,389,3424,416"/>
+<area shape="rect" id="node8" title=" " alt="" coords="3449,389,3574,416"/>
+<area shape="rect" id="node9" title=" " alt="" coords="4244,389,4401,416"/>
+<area shape="rect" id="node10" title=" " alt="" coords="4426,389,4568,416"/>
+<area shape="rect" id="node11" href="$classmemory__space__t.html" title=" " alt="" coords="1860,389,1982,416"/>
+<area shape="rect" id="node33" href="$classptx__thread__info.html" title=" " alt="" coords="1815,2600,1926,2627"/>
+<area shape="rect" id="node12" title=" " alt="" coords="1606,5,1681,32"/>
+<area shape="rect" id="node22" href="$classcore__config.html" title=" " alt="" coords="3100,885,3188,911"/>
+<area shape="rect" id="node23" href="$classgpgpu__context.html" title=" " alt="" coords="2252,389,2358,416"/>
+<area shape="rect" id="node24" href="$classshader__core__ctx.html" title=" " alt="" coords="1978,2153,2096,2180"/>
+<area shape="rect" id="node25" href="$classcore__t.html" title=" " alt="" coords="1841,2511,1900,2537"/>
+<area shape="rect" id="node26" href="$classsimt__stack.html" title=" " alt="" coords="1775,2421,1862,2448"/>
+<area shape="rect" id="node27" href="$classgpgpu__sim.html" title=" " alt="" coords="3508,2332,3593,2359"/>
+<area shape="rect" id="node28" href="$classshader__core__config.html" title=" " alt="" coords="3215,1270,3350,1297"/>
+<area shape="rect" id="node29" href="$classsimt__core__cluster.html" title=" " alt="" coords="3309,2243,3434,2269"/>
+<area shape="rect" id="node30" href="$classmemory__config.html" title=" " alt="" coords="2070,1270,2180,1297"/>
+<area shape="rect" id="node34" href="$structifetch__buffer__t.html" title=" " alt="" coords="1681,389,1785,416"/>
+<area shape="rect" id="node38" href="$classScoreboard.html" title=" " alt="" coords="1326,1685,1414,1711"/>
+<area shape="rect" id="node43" href="$classshader__core__mem__fetch__allocator.html" title=" " alt="" coords="1674,1677,1840,1719"/>
+<area shape="rect" id="node44" href="$classopndcoll__rfu__t.html" title=" " alt="" coords="1047,2243,1150,2269"/>
+<area shape="rect" id="node46" href="$classthread__ctx__t.html" title=" " alt="" coords="1121,389,1214,416"/>
+<area shape="rect" id="node48" href="$classbarrier__set__t.html" title=" " alt="" coords="1962,2243,2056,2269"/>
+<area shape="rect" id="node13" href="$classint.html" title=" " alt="" coords="4878,389,4916,416"/>
+<area shape="rect" id="node14" title=" " alt="" coords="3598,389,3705,416"/>
+<area shape="rect" id="node15" title=" " alt="" coords="2971,5,3018,32"/>
+<area shape="rect" id="node16" title=" " alt="" coords="3730,382,3872,423"/>
+<area shape="rect" id="node17" title=" " alt="" coords="3897,389,4022,416"/>
+<area shape="rect" id="node18" title=" " alt="" coords="4047,389,4219,416"/>
+<area shape="rect" id="node19" title=" " alt="" coords="4684,885,4870,911"/>
+<area shape="rect" id="node20" title=" " alt="" coords="4473,877,4609,919"/>
+<area shape="rect" id="node21" title=" " alt="" coords="4190,885,4340,911"/>
+<area shape="rect" id="node31" href="$classshader__core__stats.html" title=" " alt="" coords="3408,1685,3538,1711"/>
+<area shape="rect" id="node32" title=" " alt="" coords="3648,1270,3780,1297"/>
+<area shape="rect" id="node35" title=" " alt="" coords="2120,1887,2250,1928"/>
+<area shape="rect" id="node36" title=" " alt="" coords="2364,1894,2520,1921"/>
+<area shape="rect" id="node37" href="$classmem__fetch__interface.html" title=" " alt="" coords="1456,1685,1600,1711"/>
+<area shape="rect" id="node39" title=" " alt="" coords="2596,1887,2747,1928"/>
+<area shape="rect" id="node40" title=" " alt="" coords="2772,1894,2926,1921"/>
+<area shape="rect" id="node41" href="$classread__only__cache.html" title="Read only cache." alt="" coords="2244,1685,2363,1711"/>
+<area shape="rect" id="node45" title=" " alt="" coords="926,1894,1098,1921"/>
+<area shape="rect" id="node47" title=" " alt="" coords="1122,1894,1270,1921"/>
+<area shape="rect" id="node49" title=" " alt="" coords="1294,1887,1489,1928"/>
+<area shape="rect" id="node50" title=" " alt="" coords="1604,1887,1758,1928"/>
+</map>

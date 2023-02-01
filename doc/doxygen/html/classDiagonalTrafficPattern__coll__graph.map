@@ -1,0 +1,6 @@
+<map id="DiagonalTrafficPattern" name="DiagonalTrafficPattern">
+<area shape="rect" id="node1" title=" " alt="" coords="5,247,155,273"/>
+<area shape="rect" id="node2" href="$classRandomTrafficPattern.html" title=" " alt="" coords="7,171,153,197"/>
+<area shape="rect" id="node3" href="$classTrafficPattern.html" title=" " alt="" coords="31,95,129,121"/>
+<area shape="rect" id="node4" href="$classint.html" title=" " alt="" coords="61,5,99,32"/>
+</map>

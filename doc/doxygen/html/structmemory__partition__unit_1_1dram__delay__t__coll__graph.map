@@ -1,0 +1,52 @@
+<map id="memory_partition_unit::dram_delay_t" name="memory_partition_unit::dram_delay_t">
+<area shape="rect" id="node1" title=" " alt="" coords="7352,1193,7501,1235"/>
+<area shape="rect" id="node2" href="$classmem__fetch.html" title=" " alt="" coords="6904,1103,6991,1129"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5287,1012,5390,1039"/>
+<area shape="rect" id="node4" href="$classmemory__config.html" title=" " alt="" coords="3768,1012,3877,1039"/>
+<area shape="rect" id="node5" href="$classgpgpu__context.html" title=" " alt="" coords="1732,389,1838,416"/>
+<area shape="rect" id="node6" href="$classsymbol__table.html" title=" " alt="" coords="573,833,672,860"/>
+<area shape="rect" id="node14" href="$classptx__stats.html" title=" " alt="" coords="948,833,1022,860"/>
+<area shape="rect" id="node15" href="$classGPGPUsim__ctx.html" title=" " alt="" coords="1708,833,1822,860"/>
+<area shape="rect" id="node16" href="$classcuda__sim.html" title=" " alt="" coords="1991,833,2070,860"/>
+<area shape="rect" id="node18" href="$classcuda__device__runtime.html" title=" " alt="" coords="2655,833,2800,860"/>
+<area shape="rect" id="node19" href="$classptxinfo__data.html" title=" " alt="" coords="1487,833,1579,860"/>
+<area shape="rect" id="node20" href="$classcuda__runtime__api.html" title=" " alt="" coords="1339,833,1463,860"/>
+<area shape="rect" id="node21" href="$classptx__recognizer.html" title=" " alt="" coords="2236,1012,2342,1039"/>
+<area shape="rect" id="node23" href="$classcore__config.html" title=" " alt="" coords="3234,833,3322,860"/>
+<area shape="rect" id="node46" href="$classmem__access__t.html" title=" " alt="" coords="6927,833,7038,860"/>
+<area shape="rect" id="node7" title=" " alt="" coords="113,389,294,416"/>
+<area shape="rect" id="node8" title=" " alt="" coords="319,389,430,416"/>
+<area shape="rect" id="node9" title=" " alt="" coords="454,375,598,431"/>
+<area shape="rect" id="node10" href="$classptx__version.html" title=" " alt="" coords="981,389,1069,416"/>
+<area shape="rect" id="node11" title=" " alt="" coords="2443,5,2490,32"/>
+<area shape="rect" id="node26" href="$classlinear__to__raw__address__translation.html" title=" " alt="" coords="3470,382,3622,423"/>
+<area shape="rect" id="node29" href="$classcache__config.html" title=" " alt="" coords="3120,389,3218,416"/>
+<area shape="rect" id="node30" href="$classwarp__inst__t.html" title=" " alt="" coords="5414,1012,5503,1039"/>
+<area shape="rect" id="node31" href="$classinst__t.html" title=" " alt="" coords="5431,833,5486,860"/>
+<area shape="rect" id="node12" title=" " alt="" coords="4461,5,4536,32"/>
+<area shape="rect" id="node22" href="$classmemory__space__t.html" title=" " alt="" coords="4655,389,4776,416"/>
+<area shape="rect" id="node45" href="$structaddrdec__t.html" title=" " alt="" coords="7560,619,7639,645"/>
+<area shape="rect" id="node13" title=" " alt="" coords="1682,5,1728,32"/>
+<area shape="rect" id="node17" href="$classint.html" title=" " alt="" coords="3270,5,3308,32"/>
+<area shape="rect" id="node24" title=" " alt="" coords="459,5,631,32"/>
+<area shape="rect" id="node25" title=" " alt="" coords="4122,833,4245,860"/>
+<area shape="rect" id="node28" href="$classl2__cache__config.html" title=" " alt="" coords="3604,833,3718,860"/>
+<area shape="rect" id="node27" title=" " alt="" coords="3492,5,3651,32"/>
+<area shape="rect" id="node32" title=" " alt="" coords="4801,389,4942,416"/>
+<area shape="rect" id="node33" title=" " alt="" coords="4966,389,5142,416"/>
+<area shape="rect" id="node34" title=" " alt="" coords="5167,389,5288,416"/>
+<area shape="rect" id="node35" title=" " alt="" coords="5313,389,5438,416"/>
+<area shape="rect" id="node36" title=" " alt="" coords="5462,389,5620,416"/>
+<area shape="rect" id="node37" title=" " alt="" coords="5644,389,5787,416"/>
+<area shape="rect" id="node38" title=" " alt="" coords="5812,389,5918,416"/>
+<area shape="rect" id="node39" title=" " alt="" coords="5943,382,6086,423"/>
+<area shape="rect" id="node40" title=" " alt="" coords="6110,389,6236,416"/>
+<area shape="rect" id="node41" title=" " alt="" coords="6260,389,6432,416"/>
+<area shape="rect" id="node42" title=" " alt="" coords="6645,389,6832,416"/>
+<area shape="rect" id="node43" title=" " alt="" coords="4370,826,4506,867"/>
+<area shape="rect" id="node44" title=" " alt="" coords="4531,833,4682,860"/>
+<area shape="rect" id="node47" title=" " alt="" coords="7108,382,7267,423"/>
+<area shape="rect" id="node48" title=" " alt="" coords="7291,382,7474,423"/>
+<area shape="rect" id="node49" title=" " alt="" coords="6953,389,7084,416"/>
+<area shape="rect" id="node50" title=" " alt="" coords="5097,1012,5262,1039"/>
+</map>

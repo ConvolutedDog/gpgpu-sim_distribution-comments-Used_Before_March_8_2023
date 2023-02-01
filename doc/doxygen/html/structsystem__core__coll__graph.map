@@ -1,0 +1,13 @@
+<map id="system_core" name="system_core">
+<area shape="rect" id="node1" title=" " alt="" coords="652,985,748,1012"/>
+<area shape="rect" id="node2" href="$structpredictor__systemcore.html" title=" " alt="" coords="283,137,430,164"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,780,65,807"/>
+<area shape="rect" id="node6" href="$structBTB__systemcore.html" title=" " alt="" coords="295,825,418,852"/>
+<area shape="rect" id="node7" href="$structitlb__systemcore.html" title=" " alt="" coords="300,1011,413,1037"/>
+<area shape="rect" id="node8" href="$structicache__systemcore.html" title=" " alt="" coords="289,1167,424,1193"/>
+<area shape="rect" id="node9" href="$structdcache__systemcore.html" title=" " alt="" coords="287,960,426,987"/>
+<area shape="rect" id="node11" href="$structdtlb__systemcore.html" title=" " alt="" coords="298,1247,415,1273"/>
+<area shape="rect" id="node4" title=" " alt="" coords="12,93,59,120"/>
+<area shape="rect" id="node5" href="$classint.html" title=" " alt="" coords="16,1227,55,1253"/>
+<area shape="rect" id="node10" title=" " alt="" coords="333,1297,380,1324"/>
+</map>

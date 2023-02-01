@@ -1,0 +1,11 @@
+<map id="pipelined_simd_unit" name="pipelined_simd_unit">
+<area shape="rect" id="node1" title=" " alt="" coords="229,80,365,107"/>
+<area shape="rect" id="node3" href="$classdp__unit.html" title=" " alt="" coords="5,155,69,181"/>
+<area shape="rect" id="node4" href="$classint__unit.html" title=" " alt="" coords="93,155,157,181"/>
+<area shape="rect" id="node5" href="$classldst__unit.html" title=" " alt="" coords="182,155,253,181"/>
+<area shape="rect" id="node6" href="$classsfu.html" title=" " alt="" coords="277,155,317,181"/>
+<area shape="rect" id="node7" href="$classsp__unit.html" title=" " alt="" coords="341,155,405,181"/>
+<area shape="rect" id="node8" href="$classspecialized__unit.html" title=" " alt="" coords="429,155,544,181"/>
+<area shape="rect" id="node9" href="$classtensor__core.html" title=" " alt="" coords="568,155,659,181"/>
+<area shape="rect" id="node2" href="$classsimd__function__unit.html" title=" " alt="" coords="232,5,363,32"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="Power_Module" name="Power_Module">
+<area shape="rect" id="node1" title=" " alt="" coords="968,425,1076,451"/>
+<area shape="rect" id="node2" href="$classModule.html" title=" " alt="" coords="244,382,308,409"/>
+<area shape="rect" id="node8" href="$classTimedModule.html" title=" " alt="" coords="390,347,490,374"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,346,136,373"/>
+<area shape="rect" id="node4" title=" " alt="" coords="43,427,98,454"/>
+<area shape="rect" id="node5" title=" " alt="" coords="709,631,769,658"/>
+<area shape="rect" id="node6" href="$classint.html" title=" " alt="" coords="421,25,459,51"/>
+<area shape="rect" id="node7" href="$classNetwork.html" title=" " alt="" coords="703,229,774,255"/>
+<area shape="rect" id="node9" title=" " alt="" coords="363,133,517,159"/>
+<area shape="rect" id="node10" title=" " alt="" coords="357,183,523,210"/>
+<area shape="rect" id="node11" title=" " alt="" coords="377,234,503,261"/>
+<area shape="rect" id="node12" title=" " alt="" coords="373,297,507,323"/>
+<area shape="rect" id="node13" title=" " alt="" coords="669,682,808,709"/>
+</map>

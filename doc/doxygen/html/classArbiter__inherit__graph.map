@@ -1,0 +1,7 @@
+<map id="Arbiter" name="Arbiter">
+<area shape="rect" id="node1" title=" " alt="" coords="160,80,220,107"/>
+<area shape="rect" id="node3" href="$classMatrixArbiter.html" title=" " alt="" coords="5,155,100,181"/>
+<area shape="rect" id="node4" href="$classRoundRobinArbiter.html" title=" " alt="" coords="125,155,255,181"/>
+<area shape="rect" id="node5" href="$classTreeArbiter.html" title=" " alt="" coords="280,155,367,181"/>
+<area shape="rect" id="node2" href="$classModule.html" title=" " alt="" coords="158,5,222,32"/>
+</map>

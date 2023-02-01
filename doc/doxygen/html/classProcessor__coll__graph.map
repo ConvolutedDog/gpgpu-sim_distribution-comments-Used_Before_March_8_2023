@@ -1,0 +1,52 @@
+<map id="Processor" name="Processor">
+<area shape="rect" id="node1" title=" " alt="" coords="2309,3259,2391,3285"/>
+<area shape="rect" id="node2" href="$classComponent.html" title=" " alt="" coords="1313,4984,1401,5011"/>
+<area shape="rect" id="node7" href="$classFlashController.html" title=" " alt="" coords="1573,3531,1683,3557"/>
+<area shape="rect" id="node29" href="$classPCIeController.html" title=" " alt="" coords="1575,2697,1681,2724"/>
+<area shape="rect" id="node31" href="$classNIUController.html" title=" " alt="" coords="1577,2837,1679,2864"/>
+<area shape="rect" id="node35" href="$classMemoryController.html" title=" " alt="" coords="2061,4552,2183,4579"/>
+<area shape="rect" id="node36" href="$classPipeline.html" title=" " alt="" coords="1594,3361,1662,3388"/>
+<area shape="rect" id="node40" href="$classMCBackend.html" title=" " alt="" coords="1581,4807,1675,4833"/>
+<area shape="rect" id="node42" href="$classMCFrontEnd.html" title=" " alt="" coords="1812,4500,1907,4527"/>
+<area shape="rect" id="node43" href="$classArrayST.html" title=" " alt="" coords="1593,4001,1663,4028"/>
+<area shape="rect" id="node44" href="$classselection__logic.html" title=" " alt="" coords="1574,3075,1682,3101"/>
+<area shape="rect" id="node45" href="$classMCPHY.html" title=" " alt="" coords="1593,4456,1663,4483"/>
+<area shape="rect" id="node46" href="$classDRAM.html" title=" " alt="" coords="1598,5097,1658,5124"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,2713,65,2740"/>
+<area shape="rect" id="node5" href="$classpowerComponents.html" title=" " alt="" coords="230,4292,361,4319"/>
+<area shape="rect" id="node6" href="$classArea.html" title=" " alt="" coords="467,5120,516,5147"/>
+<area shape="rect" id="node8" href="$classuca__org__t.html" title=" " alt="" coords="1318,3556,1397,3583"/>
+<area shape="rect" id="node10" href="$classmem__array.html" title=" " alt="" coords="999,3404,1085,3431"/>
+<area shape="rect" id="node13" href="$structresults__mem__array.html" title=" " alt="" coords="976,3975,1108,4001"/>
+<area shape="rect" id="node15" href="$classMCParam.html" title=" " alt="" coords="1317,4676,1397,4703"/>
+<area shape="rect" id="node17" href="$classInputParameter.html" title=" " alt="" coords="1302,2956,1413,2983"/>
+<area shape="rect" id="node20" href="$structroot__system.html" title=" " alt="" coords="995,1073,1089,1100"/>
+<area shape="rect" id="node21" href="$structsystem__L2.html" title=" " alt="" coords="633,805,719,832"/>
+<area shape="rect" id="node22" href="$structsystem__L3.html" title=" " alt="" coords="633,1376,719,1403"/>
+<area shape="rect" id="node23" href="$structsystem__L2Directory.html" title=" " alt="" coords="607,1427,745,1453"/>
+<area shape="rect" id="node24" href="$structsystem__mc.html" title=" " alt="" coords="631,1325,721,1352"/>
+<area shape="rect" id="node25" href="$structsystem__mem.html" title=" " alt="" coords="626,932,726,959"/>
+<area shape="rect" id="node26" href="$structsystem__L1Directory.html" title=" " alt="" coords="607,341,745,368"/>
+<area shape="rect" id="node27" href="$structsystem__niu.html" title=" " alt="" coords="632,533,720,560"/>
+<area shape="rect" id="node28" href="$structsystem__core.html" title=" " alt="" coords="628,983,724,1009"/>
+<area shape="rect" id="node30" href="$classPCIeParam.html" title=" " alt="" coords="631,2481,721,2508"/>
+<area shape="rect" id="node32" href="$classNIUParam.html" title=" " alt="" coords="634,2419,718,2445"/>
+<area shape="rect" id="node38" href="$classCoreDynParam.html" title=" " alt="" coords="621,3487,731,3513"/>
+<area shape="rect" id="node48" href="$classDRAMParam.html" title=" " alt="" coords="627,4488,725,4515"/>
+<area shape="rect" id="node4" href="$classpowerDef.html" title=" " alt="" coords="637,4269,715,4296"/>
+<area shape="rect" id="node9" title=" " alt="" coords="272,689,319,716"/>
+<area shape="rect" id="node11" href="$classint.html" title=" " alt="" coords="276,2448,315,2475"/>
+<area shape="rect" id="node34" href="$classProcParam.html" title=" " alt="" coords="633,3824,719,3851"/>
+<area shape="rect" id="node12" title=" " alt="" coords="619,3120,733,3147"/>
+<area shape="rect" id="node14" title=" " alt="" coords="272,3127,319,3153"/>
+<area shape="rect" id="node16" title=" " alt="" coords="268,4191,323,4217"/>
+<area shape="rect" id="node18" title=" " alt="" coords="1005,2949,1079,2976"/>
+<area shape="rect" id="node19" href="$classParseXML.html" title=" " alt="" coords="1315,2417,1399,2444"/>
+<area shape="rect" id="node33" title=" " alt="" coords="2065,5295,2179,5321"/>
+<area shape="rect" id="node37" title=" " alt="" coords="1300,3733,1415,3760"/>
+<area shape="rect" id="node39" title=" " alt="" coords="1280,4575,1435,4601"/>
+<area shape="rect" id="node41" href="$classstatsDef.html" title=" " alt="" coords="1322,4433,1393,4460"/>
+<area shape="rect" id="node47" title=" " alt="" coords="1298,5211,1417,5237"/>
+<area shape="rect" id="node49" title=" " alt="" coords="2065,5345,2179,5372"/>
+<area shape="rect" id="node50" title=" " alt="" coords="2039,5432,2205,5459"/>
+</map>

@@ -1031,63 +1031,79 @@ void ptx_instruction::set_opcode_and_latency() {
          &gpgpu_ctx->func_sim->cdp_latency[2],
          &gpgpu_ctx->func_sim->cdp_latency[3],
          &gpgpu_ctx->func_sim->cdp_latency[4]);
-
+  //这里计算操作数需要的寄存器个数，m_operands在ptx_ir.h的ptx_instruction类中定义：
+  //    std::vector<operand_info> m_operands;
+  //m_operands会在每条指令解析的时候将所有操作数都添加到其中，例如解析 mad a,b,c 指令时，会将 a,b,c
+  //三个操作数添加进m_operands，即每一条指令对象有一个操作数向量m_operands。
   if (!m_operands.empty()) {
     std::vector<operand_info>::iterator it;
     for (it = ++m_operands.begin(); it != m_operands.end(); it++) {
+      //操作数数量计数。
       num_operands++;
+      //如果是寄存器或者是矢量，寄存器数量加1。
       if ((it->is_reg() || it->is_vector())) {
         num_regs++;
       }
     }
   }
+  //先默认op为ALU操作类型，后面依据LOAD/STORE等指令再修改。
   op = ALU_OP;
+  //先默认内存操作类型mem_op为非纹理访存类型，后面依据TEX_OP指令再修改。
   mem_op = NOT_TEX;
+  //initiation_interval：指令发射间隔，即每次指令发射之间的时间间隔，单位为时钟周期。
+  //latency：延迟，指令从发射到执行完毕所需的时间，单位为时钟周期。
   initiation_interval = latency = 1;
+  //依据指令的操作码来对op和mem_op修改。
   switch (m_opcode) {
-    case MOV_OP:
+    //mov指令为数据移动指令：has_memory_read()为真时，代表LOAD；has_memory_write()为真时，代表STORE。
+    case MOV_OP:       //数据移动指令
       assert(!(has_memory_read() && has_memory_write()));
       if (has_memory_read()) op = LOAD_OP;
       if (has_memory_write()) op = STORE_OP;
       break;
-    case LD_OP:
+    case LD_OP:        //LOAD指令
       op = LOAD_OP;
       break;
-    case MMA_LD_OP:
+    case MMA_LD_OP:    //Tensor Core上的wmma指令
       op = TENSOR_CORE_LOAD_OP;
       break;
-    case LDU_OP:
+    case LDU_OP:       //从warp中各线程共同的地址加载只读数据
       op = LOAD_OP;
       break;
-    case ST_OP:
+    case ST_OP:        //STORE指令
       op = STORE_OP;
       break;
-    case MMA_ST_OP:
+    case MMA_ST_OP:    //Tensor Core上的store指令
       op = TENSOR_CORE_STORE_OP;
       break;
-    case BRA_OP:
+    case BRA_OP:       //跳转指令
       op = BRANCH_OP;
       break;
-    case BREAKADDR_OP:
+    case BREAKADDR_OP: //跳转指令
       op = BRANCH_OP;
       break;
-    case TEX_OP:
+    case TEX_OP:       //纹理内存查找指令
       op = LOAD_OP;
       mem_op = TEX;
       break;
-    case ATOM_OP:
+    case ATOM_OP:      //线程与线程之间通信的Atomic reduction操作指令
       op = LOAD_OP;
       break;
-    case BAR_OP:
+    case BAR_OP:       //屏障指令
       op = BARRIER_OP;
       break;
-    case SST_OP:
+    case SST_OP:       //???屏障指令
       op = BARRIER_OP;
       break;
-    case MEMBAR_OP:
+    case MEMBAR_OP:    //强制执行内存操作的排序指令
       op = MEMORY_BARRIER_OP;
       break;
-    case CALL_OP: {
+    case CALL_OP: {    //调用函数并记录返回位置
+      //在ptx_ir.h中定义：API为vprintf时，if (fname == "vprintf") {m_is_printf = true;}
+      //在ptx_ir.h中定义：
+      // API为cudaStreamCreateWithFlags时，if (fname == "cudaStreamCreateWithFlags") m_is_cdp = 1;
+      // API为cudaGetParameterBufferV2时，if (fname == "cudaGetParameterBufferV2") m_is_cdp = 2;
+      // API为cudaLaunchDeviceV2时，if (fname == "cudaLaunchDeviceV2") m_is_cdp = 4;
       if (m_is_printf || m_is_cdp) {
         op = ALU_OP;
       } else

@@ -1040,7 +1040,7 @@ void ptx_instruction::set_opcode_and_latency() {
     for (it = ++m_operands.begin(); it != m_operands.end(); it++) {
       //操作数数量计数。
       num_operands++;
-      //如果是寄存器或者是矢量，寄存器数量加1。
+      //如果操作数是寄存器或者是矢量，寄存器数量加1。
       if ((it->is_reg() || it->is_vector())) {
         num_regs++;
       }
@@ -1341,26 +1341,48 @@ static unsigned datatype2size(unsigned data_type) {
 
 /*
 PTX指令预解码函数，它的功能是将PTX指令的二进制码解码为可读的字符串，以便进行后续的指令处理和执行。
+预解码是通过调用ptx_instruction::pre_decode()对每条指令进行的。它提取了对定时模拟器有用的信息：
+1. 检测LD/ST指令。
+2. 确定该指令是否写到目标寄存器。
+3. 如果这是一条分支指令，获得重合PC。
+4. 提取该指令的寄存器操作数。
+5. 检测预设指令。
+提取的信息存储在与指令对应的 ptx_instruction 对象中。这加快了仿真的速度，因为在一个内核启动中的所有标量
+线程都执行相同的内核函数。在函数加载时提取一次这些信息，比在仿真过程中对每个线程重复提取要有效得多。
 */
 void ptx_instruction::pre_decode() {
   //PC值以获取当前被处理的指令。
   pc = m_PC;
   //m_inst_size为指令的大小，以byte为单位。
   isize = m_inst_size;
-  //MAX_OUTPUT_VALUES和MAX_INPUT_VALUES在abstract_hardware_model.h中定义
+  //MAX_OUTPUT_VALUES和MAX_INPUT_VALUES在abstract_hardware_model.h中定义。out[i]用于保存输出操作数，
+  //in[i]用于保存输入操作数。MAX_OUTPUT_VALUES和MAX_INPUT_VALUES用于指定支持PTX指令中最大的输出操作数
+  //数量和输入操作数数量。
   for (unsigned i = 0; i < MAX_OUTPUT_VALUES; i++) {
     out[i] = 0;
   }
   for (unsigned i = 0; i < MAX_INPUT_VALUES; i++) {
     in[i] = 0;
   }
+  //outcount是PTX指令中的输出操作数数量，incount是输入操作数数量。
   incount = 0;
   outcount = 0;
+  //操作数是向量作为输入。
   is_vectorin = 0;
+  //操作数是向量作为输出。
   is_vectorout = 0;
+  //MAX_REG_OPERANDS由abstract_hardware_model.h定义，为指令中destination, source, 或address uarch
+  //操作数的最大数量。arch_reg在abstract_hardware_model.h中定义为：
+  //  struct {
+  //        int dst[MAX_REG_OPERANDS];
+  //        int src[MAX_REG_OPERANDS];
+  //  } arch_reg;
+  //是用于Bank冲突评估的寄存器号。
   std::fill_n(arch_reg.src, MAX_REG_OPERANDS, -1);
   std::fill_n(arch_reg.dst, MAX_REG_OPERANDS, -1);
+  //谓词寄存器号。
   pred = 0;
+  //???用于记分牌
   ar1 = 0;
   ar2 = 0;
   space = m_space_spec;
@@ -1390,7 +1412,37 @@ void ptx_instruction::pre_decode() {
       printf("Execution error: Invalid opcode (0x%x)\n", get_opcode());
       break;
   }
-
+  //PTX ISA 2.0版在加载和存储指令上引入了可选的缓存运算符。缓存运算符需要sm_20或更高的目标体系结构。加
+  //载或存储指令上的缓存运算符仅被视为性能提示。对ld或st指令使用缓存运算符不会改变程序的内存一致性行为。
+  //对于sm_20及更高版本，缓存运算符具有以下定义和行为：
+  //1. 内存Load指令的缓存运算符：
+  //  .ca: Cache at all levels，所有级别的缓存，可能会再次访问。
+  //       默认的Loaf指令缓存操作是ld.ca，它使用正常的逐出策略在所有级别（L1和L2）中分配缓存线。全局数
+  //       据在L2级是一致的，但多个L1缓存对于全局数据来说是不一致的。如果一个线程通过一个L1缓存存储到全
+  //       局内存，而第二个线程通过第二个L1缓存加载该地址，并使用ld.ca，则第二个可能会得到过时的L1缓存
+  //       数据，而不是第一个线程存储的数据。驱动程序必须使并行线程的从属网格之间的全局L1缓存线无效。然
+  //       后，第一个网格程序的存储由第二个网格程序正确获取，该程序发出L1中缓存的默认ld.ca加载。
+  //  .cg  Cache at global level，全局级缓存（L2及以下缓存，而不是L1）。
+  //       使用ld.cg全局性地加载，绕过L1缓存，并仅缓存在L2缓存中。
+  //  .cs  Cache streaming，缓存流，可能会被访问一次。
+  //       ld.cs加载缓存的流操作在L1和L2分配全局行，采用驱逐优先的策略在L1和L2分配全局行，以限制临时流
+  //       数据对缓存污染，这些数据可能被访问一次或两次。当ld.cs被应用到一个本地窗口地址时，它执行ld.lu
+  //       操作。
+  //  .lu  Last use。
+  //       编译器/程序员在恢复溢出的寄存器和弹出函数堆栈框架时可以使用ld.lu，以避免不必要的写回不会再使
+  //       用的行。ld.lu指令在全局地址上执行一个加载缓存的流操作（ld.cs）。
+  //  .cv  不要再次缓存和获取（考虑缓存的系统内存线已过时，再次获取）。应用于全局系统内存地址的ld.cv加载
+  //       操作使匹配的L2行无效（丢弃），并在每次新加载时重新获取该行。
+  //2. 内存Store指令的缓存运算符：
+  //  .wb  缓存写回所有级别一致。
+  //       默认的存储指令缓存操作是st.wb，它使用正常的逐出策略写回一致缓存级别的缓存行。如果一个线程绕过
+  //       其L1缓存存储到全局内存，而另一个SM中的第二个线程稍后通过具有ld.ca的不同L1缓存从该地址加载，则
+  //       第二个可能会命中过时的L1缓存数据，而不是从第一个线程存储的L2或内存中获取数据。驱动程序必须使线
+  //       程阵列的从属网格之间的全局L1缓存线无效。然后，第一个网格程序的存储在L1中正确丢失，并由发出默认
+  //       ld.ca加载的第二个网格程序获取。
+  //  .wt  Cache write-through (to system memory).
+  //       st.wt存储写入操作应用于通过二级缓存写入的全局系统内存地址。
+  
   switch (m_cache_option) {
     case CA_OPTION:
       cache_op = CACHE_ALL;
@@ -1410,7 +1462,7 @@ void ptx_instruction::pre_decode() {
     case CV_OPTION:
       cache_op = CACHE_VOLATILE;
       break;
-    case WB_OPTION:
+    case WB_OPTION: //
       cache_op = CACHE_WRITE_BACK;
       break;
     case WT_OPTION:
@@ -1493,6 +1545,8 @@ void ptx_instruction::pre_decode() {
 
   // Setting number of input and output operands which is required for
   // scoreboard check
+  //设置记分牌检查所需的输入和输出操作数。outcount是输出操作数数量，incount是输入操作数数量。
+  //从这里看，out[i]用于保存输出操作数，in[i]用于保存输入操作数。
   for (int i = 0; i < MAX_OUTPUT_VALUES; i++)
     if (out[i] > 0) outcount++;
 

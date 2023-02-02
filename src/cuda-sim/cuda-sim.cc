@@ -1479,7 +1479,7 @@ void ptx_instruction::pre_decode() {
         cache_op = CACHE_GLOBAL;
       break;
   }
-
+  
   set_opcode_and_latency();
   set_bar_type();
   // Get register operands

@@ -1648,7 +1648,6 @@ void ptx_instruction::pre_decode() {
       }
     }
   }
-
   // get reconvergence pc
   //获取分支重聚点PC值。
   reconvergence_pc = gpgpu_ctx->func_sim->get_converge_point(pc);

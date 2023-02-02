@@ -1592,6 +1592,7 @@ void ptx_instruction::pre_decode() {
     if (in[i] > 0) incount++;
 
   // Get predicate
+  //获取谓词寄存器编号。
   if (has_pred()) {
     const operand_info &p = get_pred();
     pred = p.reg_num();
@@ -1600,11 +1601,13 @@ void ptx_instruction::pre_decode() {
   // Get address registers inside memory operands.
   // Assuming only one memory operand per instruction,
   //  and maximum of two address registers for one memory operand.
+  //获取内存操作数内的地址寄存器。假设每条指令只有一个内存操作数，一个内存操作数最多有两个地址寄存器。
+  //当指令为读存储指令或者写存储指令，获取内存操作数内的地址寄存器。
   if (has_memory_read() || has_memory_write()) {
     ptx_instruction::const_iterator op = op_iter_begin();
     for (; op != op_iter_end(); op++, n++) {  // process operands
       const operand_info &o = *op;
-
+      //判断o指向的操作数是否是内存操作数。
       if (o.is_memory_operand()) {
         // We do not support the null register as a memory operand
         assert(!o.is_non_arch_reg());
@@ -1647,8 +1650,9 @@ void ptx_instruction::pre_decode() {
   }
 
   // get reconvergence pc
+  //获取分支重聚点PC值。
   reconvergence_pc = gpgpu_ctx->func_sim->get_converge_point(pc);
-
+  //ptx_instruction::pre_decode()函数执行完毕，设置解码状态变量m_decoded = true。
   m_decoded = true;
 }
 

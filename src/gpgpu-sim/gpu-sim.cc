@@ -99,7 +99,8 @@ Clock Domains
 #include "mem_latency_stat.h"
 
 /*
-该函数用于注册GPGPU-Sim中用于控制能耗模型的命令行选项，并将它们添加到OptionParser实例中。该函数接受一个OptionParser指针作为参数，用于将能耗模型参数添加到OptionParser实例中。
+该函数用于注册GPGPU-Sim中用于控制能耗模型的命令行选项，并将它们添加到OptionParser实例中。该函数接
+受一个OptionParser指针作为参数，用于将能耗模型参数添加到OptionParser实例中。
 */
 void power_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpuwattch_xml_file", OPT_CSTR,
@@ -255,7 +256,8 @@ void shader_core_config::reg_options(class OptionParser *opp) {
                          "8:128:5,L:R:m:N,F:128:4,128:2");
   /*
   L1常量缓存（只读）配置。逐出策略：L=LRU，F=FIFO，R=Random。???
-  1. cache_config: 缓存配置，用于指定缓存的类型，包括：L=LRU(Least Recently Used)、F=FIFO(First In First Out)、R=Random和Pseudo-LRU。
+  1. cache_config: 缓存配置，用于指定缓存的类型，包括：L=LRU(Least Recently Used)、F=FIFO(First 
+     In First Out)、R=Random和Pseudo-LRU。
   2. cache_size: 缓存大小，用于指定缓存的大小，以字节为单位。
   3. line_sz: 缓存行大小，用于指定缓存行的大小，以字节为单位。
   4. associativity: 组相关性，用于指定缓存的组相关性，例如2-way、4-way、8-way等。

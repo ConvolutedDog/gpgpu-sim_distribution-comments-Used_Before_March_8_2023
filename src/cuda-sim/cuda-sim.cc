@@ -1820,19 +1820,27 @@ void function_info::add_param_data(unsigned argn,
   }
 }
 
-
+/*
+将参数逐个对齐。
+*/
 unsigned function_info::get_args_aligned_size() {
+  //m_args_aligned_size设备端内核函数的参数大小。
   if (m_args_aligned_size >= 0) return m_args_aligned_size;
-
+  //初始时，设置param_address为0，没处理一个参数，就将param_address转到下个参数应放置的地址。
   unsigned param_address = 0;
+  //total_size代表在当前处理的指令之前的，所有已处理好（对齐好）的参数一共占用了多少个字节。
   unsigned int total_size = 0;
   for (std::map<unsigned, param_info>::iterator i =
            m_ptx_kernel_param_info.begin();
        i != m_ptx_kernel_param_info.end(); i++) {
+    //对m_ptx_kernel_param_info中的所有参数都遍历一遍。
+    //获取i指向的参数信息，param_info对象p，p包含了该参数的信息。
     param_info &p = i->second;
+    //参数名。
     std::string name = p.get_name();
+    //symbol是指令的标签。???
     symbol *param = m_symtab->lookup(name.c_str());
-
+    //p.get_size()获取该参数的位数，再计算成字节数。
     size_t arg_size = p.get_size() / 8;  // size of param in bytes
     total_size = (total_size + arg_size - 1) / arg_size * arg_size;  // aligned
     p.add_offset(total_size);

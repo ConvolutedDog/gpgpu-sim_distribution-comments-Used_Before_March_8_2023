@@ -1355,9 +1355,9 @@ void ptx_instruction::pre_decode() {
   pc = m_PC;
   //m_inst_size为指令的大小，以byte为单位。
   isize = m_inst_size;
-  //MAX_OUTPUT_VALUES和MAX_INPUT_VALUES在abstract_hardware_model.h中定义。out[i]用于保存输出操作数，
-  //in[i]用于保存输入操作数。MAX_OUTPUT_VALUES和MAX_INPUT_VALUES用于指定支持PTX指令中最大的输出操作数
-  //数量和输入操作数数量。
+  //MAX_OUTPUT_VALUES和MAX_INPUT_VALUES在abstract_hardware_model.h中定义。out[i]用于保存输出（目标）
+  //操作数，in[i]用于保存输入（源）操作数。MAX_OUTPUT_VALUES和MAX_INPUT_VALUES用于指定支持PTX指令中最
+  //大的输出操作数数量和输入操作数数量。
   for (unsigned i = 0; i < MAX_OUTPUT_VALUES; i++) {
     out[i] = 0;
   }
@@ -1504,20 +1504,31 @@ void ptx_instruction::pre_decode() {
   // Get register operands
   //获取寄存器操作数。该段代码是GPGPU-Sim模拟器中指令操作数处理函数，主要用于将指令操作数存储在out和in数
   //组中，并将指令操作数的架构寄存器存储在arch_reg.dst和arch_reg.src数组中。其中，n表示操作数的索引，m
-  //表示架构寄存器的索引，has_dst表示指令是否有目标操作数，op_iter_begin()和op_iter_end()表示指令操作数
-  //的起始和结束位置。
+  //表示arch register操作数的索引，has_dst表示指令是否有目标操作数，op_iter_begin()和op_iter_end()表
+  //示指令操作数的起始和结束位置。
   int n = 0, m = 0;
+  //const_iterator在ptx_ir.h中定义：
+  //  typedef std::vector<operand_info>::const_iterator const_iterator
+  //是一个由operand_info，即操作数信息构成的向量。
   ptx_instruction::const_iterator opr = op_iter_begin();
+  //for循环对所有的const_iterator中的操作数循环，处理每个操作数。
   for (; opr != op_iter_end(); opr++, n++) {  // process operands
+    //o即获取其中一个操作数，o为存储该操作数信息对象的地址。
     const operand_info &o = *opr;
+    //该if判断即为，当该指令具有目标操作数，且n=0时，即n编号所指向的就是目标操作数。
     if (has_dst && n == 0) {
       // Do not set the null register "_" as an architectural register
       if (o.is_reg() && !o.is_non_arch_reg()) {
+        //如果o指向的操作数为寄存器，且该寄存器不是为了PTX指令方便使用而临时占位的"_"。
+        //out[0]保存该输出（目标）操作数。
         out[0] = o.reg_num();
         arch_reg.dst[0] = o.arch_reg_num();
       } else if (o.is_vector()) {
-        is_vectorin = 1;
+        //如果o指向的操作数为向量。
+        is_vectorin = 1; //操作数是向量作为输入。
+        //o.get_vect_nelem()返回o所指向的向量操作数的向量长度。
         unsigned num_elem = o.get_vect_nelem();
+        //根据向量操作数的向量长度，将每个向量的元素加入到out[i]中。
         if (num_elem >= 1) out[0] = o.reg1_num();
         if (num_elem >= 2) out[1] = o.reg2_num();
         if (num_elem >= 3) out[2] = o.reg3_num();
@@ -1528,6 +1539,7 @@ void ptx_instruction::pre_decode() {
         if (num_elem >= 8) out[7] = o.reg8_num();
         for (int i = 0; i < num_elem; i++) arch_reg.dst[i] = o.arch_reg_num(i);
       }
+    //该else判断即为，如果该指令不具有目标操作数，则其所有操作数均为源操作数。
     } else {
       if (o.is_reg() && !o.is_non_arch_reg()) {
         int reg_num = o.reg_num();

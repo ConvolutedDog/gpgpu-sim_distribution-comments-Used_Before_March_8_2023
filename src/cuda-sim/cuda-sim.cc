@@ -1541,7 +1541,9 @@ void ptx_instruction::pre_decode() {
       }
     //该else判断即为，如果该指令不具有目标操作数，则其所有操作数均为源操作数。
     } else {
+      //如果o指向的操作数为寄存器，且该寄存器不是为了PTX指令方便使用而临时占位的"_"。
       if (o.is_reg() && !o.is_non_arch_reg()) {
+        //由于o在循环里往后迭代，先将寄存器号存储到reg_num，后面根据m索引值加入到in[i]中。
         int reg_num = o.reg_num();
         arch_reg.src[m] = o.arch_reg_num();
         switch (m) {
@@ -1561,6 +1563,7 @@ void ptx_instruction::pre_decode() {
       } else if (o.is_vector()) {
         // assert(m == 0); //only support 1 vector operand (for textures) right
         // now
+        //如果o指向的操作数为向量，与目标操作数为向量时类似。
         is_vectorout = 1;
         unsigned num_elem = o.get_vect_nelem();
         if (num_elem >= 1) in[m + 0] = o.reg1_num();

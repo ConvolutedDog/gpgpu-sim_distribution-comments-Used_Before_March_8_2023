@@ -1480,7 +1480,6 @@ void ptx_instruction::pre_decode() {
       break;
   }
 
-  
   set_opcode_and_latency();
   set_bar_type();
   // Get register operands

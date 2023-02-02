@@ -1656,14 +1656,49 @@ void ptx_instruction::pre_decode() {
   m_decoded = true;
 }
 
+/*
+该函数用于向 m_ptx_kernel_param_info 中添加函数名，类型，大小。
+对于内核入口，将每个内核参数存储在一个映射 m_ptx_kernel_param_info 中；它在ptx_ir.h中定义：
+    std::map<unsigned, param_info> m_ptx_kernel_param_info;
+但是，对于OpenCL应用程序来说，可能并不总是这样的。在OpenCL中，相关的常量内存空间可以通过两种方式分配。它
+可以在声明它的.ptx文件中显式初始化，或者使用主机上的 clCreateBuffer 来分配它。在后面这种情况下，.ptx文件
+将包含一个参数的全局声明，但它将有一个未知的数组大小。因此，该符号的地址将不会被设置，需要在执行PTX之前在：
+    function_info::add_param_data(...)
+函数中设置。在这种情况下，内核参数的地址被存储在 function_info 对象中的一个符号表中。
+
+*/
 void function_info::add_param_name_type_size(unsigned index, std::string name,
                                              int type, size_t size, bool ptr,
                                              memory_space_t space) {
   unsigned parsed_index;
   char buffer[2048];
+  //snprintf用于格式化字符串，其原型为：
+  //    snprintf(char *str, size_t size, const char *format, ...)
+  //用于将format中的size-1个字符复制到str中，但是要注意：
+  // (1) 如果格式化后的字符串长度 < size，则将此字符串全部复制到str中，并给其后添加一个字符串结束符('\0')，
+  //     该字符串结束符也占用 size 的一个位置；
+  // (2) 如果格式化后的字符串长度 >= size，则只将其中的(size-1)个字符复制到str中，并给其后添加一个字符串
+  //     结束符('\0')，返回值为欲写入的字符串长度。
+  //下面是将 m_name.c_str() + "_param_%%u" 字符串写入 buffer。
   snprintf(buffer, 2048, "%s_param_%%u", m_name.c_str());
+  //sscanf用于解析字符串，例如下述函数：
+  //    int year, month, day;
+  //    int converted = sscanf("20191103", "%04d%02d%02d", &year, &month, &day);
+  //    printf("converted=%d, year=%d, month=%d, day=%d/n", converted, year, month, day);
+  //将"20191103"字符串按照"%04d%02d%02d"的分割格式解析出并赋值给三个变量year/month/day。返回值为解析成
+  //功的变量个数。
+
+  //parsed_index其实存储的是该参数的序号，ntoken返回值可以为0或1。
   int ntokens = sscanf(name.c_str(), buffer, &parsed_index);
+  //例如，下面的注释掉的语句：
+  //  printf("name.c_str()=%s, buffer=%s, parsed_index=%d\n", name.c_str(), buffer, parsed_index);
+  //会输出：
+  //  name.c_str()=_Z6MatMulPiS_S_i_param_0, buffer=_Z6MatMulPiS_S_i_param_%u, parsed_index=0
+  //  name.c_str()=_Z6MatMulPiS_S_i_param_1, buffer=_Z6MatMulPiS_S_i_param_%u, parsed_index=1
+  //  name.c_str()=_Z6MatMulPiS_S_i_param_2, buffer=_Z6MatMulPiS_S_i_param_%u, parsed_index=2
+  //  name.c_str()=_Z6MatMulPiS_S_i_param_3, buffer=_Z6MatMulPiS_S_i_param_%u, parsed_index=3
   if (ntokens == 1) {
+    //parsed_index序号标明该参数是第几个，将该参数信息=param_info对象加入到m_ptx_kernel_param_info中。
     assert(m_ptx_kernel_param_info.find(parsed_index) ==
            m_ptx_kernel_param_info.end());
     m_ptx_kernel_param_info[parsed_index] =
@@ -1675,6 +1710,13 @@ void function_info::add_param_name_type_size(unsigned index, std::string name,
   }
 }
 
+/*
+对于CUDA和OpenCL，GPGPU-Sim为每个内核参数创建一个 gpgpu_ptx_sim_arg 对象，并维护一个所有内核参数的列表。
+在执行内核之前，会调用一个初始化函数来设置GPU网格的尺寸和参数：
+    gpgpu_cuda_ptx_sim_init_grid(...) 或者 gpgpu_opencl_ptx_sim_init_grid(...) 。
+在这些函数中使用了两个主要的对象， function_info 和 kernel_info_t 对象。在init_grid函数中，内核参数通过
+调用：function_info_object::add_param_data(argn, gpgpu_ptx_sim_arg *) 被添加到 function_info 对象中。
+*/
 void function_info::add_param_data(unsigned argn,
                                    struct gpgpu_ptx_sim_arg *args) {
   const void *data = args->m_start;

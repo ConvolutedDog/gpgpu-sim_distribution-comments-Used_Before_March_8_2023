@@ -496,3 +496,10 @@ To debug failing GPGPU-Sim regression tests you need to run them locally.  The f
 	```
 	This will put you in at the (gdb) prompt.  Setup any breakpoints needed and run.  
 
+# Commit to Gitee Or Github
+```shell
+git status
+git add -A
+git commit -m "Update cuda-sim.cc"
+git push 
+```

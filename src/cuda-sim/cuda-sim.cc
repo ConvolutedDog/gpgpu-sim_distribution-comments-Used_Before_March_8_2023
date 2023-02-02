@@ -1407,8 +1407,9 @@ void ptx_instruction::pre_decode() {
     memory_op = has_memory_read() ? memory_load : memory_store;
   }
 
+  //has_dst为True指该指令有目标操作数。
   bool has_dst = false;
-
+  //检测该指令是否有目标操作数，设置has_dst的值。
   switch (get_opcode()) {
 #define OP_DEF(OP, FUNC, STR, DST, CLASSIFICATION) \
   case OP:                                         \
@@ -1425,6 +1426,8 @@ void ptx_instruction::pre_decode() {
       printf("Execution error: Invalid opcode (0x%x)\n", get_opcode());
       break;
   }
+  
+  //设置缓存一致性策略：
   //PTX ISA 2.0版在加载和存储指令上引入了可选的缓存运算符。缓存运算符需要sm_20或更高的目标体系结构。加
   //载或存储指令上的缓存运算符仅被视为性能提示。对ld或st指令使用缓存运算符不会改变程序的内存一致性行为。
   //对于sm_20及更高版本，缓存运算符具有以下定义和行为：
@@ -1455,7 +1458,6 @@ void ptx_instruction::pre_decode() {
   //       ld.ca加载的第二个网格程序获取。
   //  .wt  Cache write-through (to system memory).
   //       st.wt存储写入操作应用于通过二级缓存写入的全局系统内存地址。
-  
   switch (m_cache_option) {
     case CA_OPTION:
       cache_op = CACHE_ALL;
@@ -1500,7 +1502,10 @@ void ptx_instruction::pre_decode() {
   //设置每种并行同步指令的屏障类型。
   set_bar_type();
   // Get register operands
-  //获取寄存器操作数。
+  //获取寄存器操作数。该段代码是GPGPU-Sim模拟器中指令操作数处理函数，主要用于将指令操作数存储在out和in数
+  //组中，并将指令操作数的架构寄存器存储在arch_reg.dst和arch_reg.src数组中。其中，n表示操作数的索引，m
+  //表示架构寄存器的索引，has_dst表示指令是否有目标操作数，op_iter_begin()和op_iter_end()表示指令操作数
+  //的起始和结束位置。
   int n = 0, m = 0;
   ptx_instruction::const_iterator opr = op_iter_begin();
   for (; opr != op_iter_end(); opr++, n++) {  // process operands

@@ -1415,6 +1415,7 @@ class function_info {
   symbol_table *m_symtab;
 
   // parameter size for device kernels
+  //设备端内核函数的参数大小。
   int m_args_aligned_size;
 
   addr_t m_n;  // offset in m_instr_mem (used in do_pdom)

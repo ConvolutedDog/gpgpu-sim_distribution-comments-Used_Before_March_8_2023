@@ -1610,6 +1610,7 @@ void ptx_instruction::pre_decode() {
       //判断o指向的操作数是否是内存操作数。
       if (o.is_memory_operand()) {
         // We do not support the null register as a memory operand
+        //GPGPU-Sim暂时不支持将空寄存器（NULL Register）作为内存操作数。
         assert(!o.is_non_arch_reg());
 
         // Check PTXPlus-type operand
@@ -1837,6 +1838,12 @@ void function_info::finalize(memory_space *param_mem) {
   }
 }
 
+/*
+支持PTXPlus需要将内核参数复制到共享内存中。内核参数可以通过调用：
+    function_info::param_to_shared(shared_mem, symbol_table)
+函数从 Param 内存拷贝到 Shared 内存。这个函数遍历存储在 function_info::m_ptx_kernel_param_info 映射
+中的内核参数，并将每个参数从 Param 内存拷贝到 shared_mem 指向的 Shared 内存中的适当位置。
+*/
 void function_info::param_to_shared(memory_space *shared_mem,
                                     symbol_table *symtab) {
   // TODO: call this only for PTXPlus with GT200 models
@@ -1870,12 +1877,18 @@ void function_info::param_to_shared(memory_space *shared_mem,
   }
 }
 
+/*
+在fout文件中列出所有参数的信息。
+*/
 void function_info::list_param(FILE *fout) const {
+  //遍历param_info对象中的所有参数。
   for (std::map<unsigned, param_info>::const_iterator i =
            m_ptx_kernel_param_info.begin();
        i != m_ptx_kernel_param_info.end(); i++) {
     const param_info &p = i->second;
+    //参数名。
     std::string name = p.get_name();
+    //获取参数的存放地址。
     symbol *param = m_symtab->lookup(name.c_str());
     addr_t param_addr = param->get_address();
     fprintf(fout, "%s: %#08x\n", name.c_str(), param_addr);

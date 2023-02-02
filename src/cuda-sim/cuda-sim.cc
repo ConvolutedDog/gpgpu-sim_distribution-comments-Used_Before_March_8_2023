@@ -1665,7 +1665,6 @@ void ptx_instruction::pre_decode() {
 将包含一个参数的全局声明，但它将有一个未知的数组大小。因此，该符号的地址将不会被设置，需要在执行PTX之前在：
     function_info::add_param_data(...)
 函数中设置。在这种情况下，内核参数的地址被存储在 function_info 对象中的一个符号表中。
-
 */
 void function_info::add_param_name_type_size(unsigned index, std::string name,
                                              int type, size_t size, bool ptr,
@@ -1721,23 +1720,37 @@ void function_info::add_param_data(unsigned argn,
                                    struct gpgpu_ptx_sim_arg *args) {
   const void *data = args->m_start;
 
+  //scratchpad_memory_param=True说明参数在OpenCL local memory中；
+  //scratchpad_memory_param=False说明参数在CUDA shared memory中。
   bool scratchpad_memory_param =
       false;  // Is this parameter in CUDA shared memory or OpenCL local memory
 
+  //对于内核入口，将每个内核参数存储在一个映射 m_ptx_kernel_param_info 中；它在ptx_ir.h中定义：
+  //  std::map<unsigned, param_info> m_ptx_kernel_param_info;
+  //下面是找到m_ptx_kernel_param_info中的第argn个参数信息。
   std::map<unsigned, param_info>::iterator i =
       m_ptx_kernel_param_info.find(argn);
   if (i != m_ptx_kernel_param_info.end()) {
     if (i->second.is_ptr_shared()) {
+      //为OpenCL涉及，后面用到再补充。
       assert(
           args->m_start == NULL &&
           "OpenCL parameter pointer to local memory must have NULL as value");
       scratchpad_memory_param = true;
     } else {
+      //为CUDA涉及。
+      //param_t在ptx_sim.h中定义：
+      //  struct param_t {
+      //    const void *pdata;
+      //    int type;
+      //    size_t size;
+      //    size_t offset;
+      //  };
       param_t tmp;
-      tmp.pdata = args->m_start;
-      tmp.size = args->m_nbytes;
-      tmp.offset = args->m_offset;
-      tmp.type = 0;
+      tmp.pdata = args->m_start;   //pdata
+      tmp.size = args->m_nbytes;   //size
+      tmp.offset = args->m_offset; //offset
+      tmp.type = 0;                //type
       i->second.add_data(tmp);
       i->second.add_offset((unsigned)args->m_offset);
     }
@@ -1745,6 +1758,7 @@ void function_info::add_param_data(unsigned argn,
     scratchpad_memory_param = true;
   }
 
+  //仅为OpenCL使用，后面用到再补充。
   if (scratchpad_memory_param) {
     // This should only happen for OpenCL:
     //
@@ -1805,6 +1819,7 @@ void function_info::add_param_data(unsigned argn,
     }
   }
 }
+
 
 unsigned function_info::get_args_aligned_size() {
   if (m_args_aligned_size >= 0) return m_args_aligned_size;

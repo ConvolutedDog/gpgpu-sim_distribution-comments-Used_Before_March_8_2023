@@ -1382,15 +1382,28 @@ void ptx_instruction::pre_decode() {
   std::fill_n(arch_reg.dst, MAX_REG_OPERANDS, -1);
   //谓词寄存器号。
   pred = 0;
-  //???用于记分牌
+  //指令寄存器，用于记分牌检查：
+  //    ar1：指令寄存器1，用于存储指令的第一个参数。
+  //    ar2：指令寄存器2，用于存储指令的第二个参数。
   ar1 = 0;
   ar2 = 0;
   space = m_space_spec;
+  //对存储的操作，在abstract_hardware_model.h定义：
+  //    enum _memory_op_t { no_memory_op = 0, memory_load, memory_store };
+  //非对存储操作为no_memory_op，存储load为memory_load，存储store为memory_store。
   memory_op = no_memory_op;
+  //对存储访存指令所使用的数据大小，例如ld.f64为64 bit读操作指令。
   data_size = 0;
   if (has_memory_read() || has_memory_write()) {
+    //get_type()获取存储访问的类型，包括以下多种可能：
+    //    B8_TYPE，S8_TYPE，U8_TYPE，B16_TYPE，S16_TYPE，U16_TYPE，F16_TYPE，B32_TYPE，S32_TYPE，
+    //    U32_TYPE，F32_TYPE，B64_TYPE，BB64_TYPE，S64_TYPE，U64_TYPE，F64_TYPE，FF64_TYPE，
+    //    BB128_TYPE。
+    //详细地内容在datatype2size()函数定义里有注释。
     unsigned to_type = get_type();
+    //对存储访存指令所使用的数据大小，例如ld.f64为64 bit读操作指令。
     data_size = datatype2size(to_type);
+    //对存储的操作初始时，设为0=no_memory_op，现在重新设置。
     memory_op = has_memory_read() ? memory_load : memory_store;
   }
 
@@ -1462,7 +1475,7 @@ void ptx_instruction::pre_decode() {
     case CV_OPTION:
       cache_op = CACHE_VOLATILE;
       break;
-    case WB_OPTION: //
+    case WB_OPTION:
       cache_op = CACHE_WRITE_BACK;
       break;
     case WT_OPTION:
@@ -1470,19 +1483,24 @@ void ptx_instruction::pre_decode() {
       break;
     default:
       // if( m_opcode == LD_OP || m_opcode == LDU_OP )
+      //对于MMA_LD_OP/LD_OP/LDU_OP指令，默认选择 CACHE_ALL=.ca 策略。
       if (m_opcode == MMA_LD_OP || m_opcode == LD_OP || m_opcode == LDU_OP)
         cache_op = CACHE_ALL;
       // else if( m_opcode == ST_OP )
+      //对于MMA_ST_OP/LST_OP指令，默认选择 CACHE_WRITE_BACK=.wb 策略。
       else if (m_opcode == MMA_ST_OP || m_opcode == ST_OP)
         cache_op = CACHE_WRITE_BACK;
+      //对于ATOM_OP指令，默认选择 CACHE_GLOBAL=.cg 策略。
       else if (m_opcode == ATOM_OP)
         cache_op = CACHE_GLOBAL;
       break;
   }
-  
+  //设置每种类型指令的操作码和延时。
   set_opcode_and_latency();
+  //设置每种并行同步指令的屏障类型。
   set_bar_type();
   // Get register operands
+  //获取寄存器操作数。
   int n = 0, m = 0;
   ptx_instruction::const_iterator opr = op_iter_begin();
   for (; opr != op_iter_end(); opr++, n++) {  // process operands

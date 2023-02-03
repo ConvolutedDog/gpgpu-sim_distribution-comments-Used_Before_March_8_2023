@@ -501,5 +501,6 @@ To debug failing GPGPU-Sim regression tests you need to run them locally.  The f
 git status
 git add -A
 git commit -m "Update cuda-sim.cc"
-git push 
+git push
+liyuhang 
 ```

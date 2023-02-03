@@ -1380,7 +1380,7 @@ void ptx_instruction::pre_decode() {
   //是用于Bank冲突评估的寄存器号。
   std::fill_n(arch_reg.src, MAX_REG_OPERANDS, -1);
   std::fill_n(arch_reg.dst, MAX_REG_OPERANDS, -1);
-  //谓词寄存器号。
+  //谓词寄存器号。谓词寄存器的介绍和使用见ptx_thread_info::ptx_exec_inst函数。
   pred = 0;
   //指令寄存器，用于记分牌检查：
   //    ar1：指令寄存器1，用于存储指令的第一个参数。
@@ -1592,7 +1592,7 @@ void ptx_instruction::pre_decode() {
     if (in[i] > 0) incount++;
 
   // Get predicate
-  //获取谓词寄存器编号。
+  //获取谓词寄存器编号。谓词寄存器的介绍和使用见ptx_thread_info::ptx_exec_inst函数。
   if (has_pred()) {
     const operand_info &p = get_pred();
     pred = p.reg_num();
@@ -2289,6 +2289,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
   addr_t pc = next_instr();
   assert(pc ==
          inst.pc);  // make sure timing model and functional model are in sync
+  //根据pc值获得当前执行的指令 ptx_instruction 对象 pI。
   const ptx_instruction *pI = m_func_info->get_instruction(pc);
 
   set_npc(pc + pI->inst_size());
@@ -2314,6 +2315,44 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       }
     }
 
+    //从 m_func_info 对象（类型为 function_info 的成员 ptx_thread_info）中的 m_instr_mem[] 获取
+    //ptx_instruction 对象 pI 后，检查 pI 是否为谓词指令，如果是，检查是否满足谓词条件，并相应地更
+    //新标志[skip]，以指示是否应执行此指令。
+    //关于谓词指令，可以看下面的PTX指令：
+    //  1.      asm("{\n\t"
+    //  2.          ".reg .s32 b;\n\t"
+    //  3.          ".reg .pred p;\n\t"     <======= 声明谓词寄存器p
+    //  4.          "add.cc.u32 %1, %1, %2;\n\t"
+    //  5.          "addc.s32 b, 0, 0;\n\t"
+    //  6.          "sub.cc.u32 %0, %0, %2;\n\t"
+    //  7.          "subc.cc.u32 %1, %1, 0;\n\t"
+    //  8.          "subc.s32 b, b, 0;\n\t"
+    //  9.          "setp.eq.s32 p, b, 1;\n\t"     <======= 给谓词变量绑定具体谓词逻辑
+    //  10.         "@p add.cc.u32 %0, %0, 0xffffffff;\n\t"
+    //  11.         "@p addc.u32 %1, %1, 0;\n\t"
+    //  12.         "}"
+    //  13.         : "+r"(x[0]), "+r"(x[1])
+    //  14.         : "r"(x[2]));
+    //谓词的声明使用 .pred 表示，例如第3行声明了谓词寄存器p。step指令给谓词变量绑定具体谓词逻辑，例如
+    //第9行 "setp.eq.s32 p, b, 1"。
+    //谓词的使用方法/指令格式为：
+    //        @p opcode;
+    //        @p opcode a;
+    //        @p opcode d, a;
+    //        @p opcode d, a, b;
+    //        @p opcode d, a, b, c;
+    //最左边的 @p是可选的guard predicate，即根据对应谓词结果选择是否执行该条指令。
+    //谓词寄存器本质上是虚拟的寄存器，用于处理PTX中的分支（类比其他ISA的条件跳转指令beq等）。
+    //SASS指令使用4位条件代码来指定更复杂的谓词行为，而不是PTX中的正常真假谓词系统。因此，PTXPlus使用
+    //相同的4位谓词系统。GPGPU-Sim使用decuda的谓词转换表来模拟PTXPlus指令。谓词寄存器的最高位表示溢出
+    //标志，后跟进位标志和符号标志。最后也是最低的位是零标志。单独的条件代码可以存储在单独的谓词寄存器中，
+    //指令可以指示要使用或修改哪个谓词寄存器。以下指令将寄存器$r0中的值与寄存器$r1中的值相加，并将结果存
+    //储在寄存器$r2中。同时，在谓词寄存器$p0中设置适当的标志：
+    //        add.u32 $p0|$r2, $r0, $r1;
+    //可以对谓词指令使用不同的测试条件。例如，只有当谓词寄存器$p0中的进位标志位被设置时，才执行下一条指令：
+    //        @$p0.cf add.u32 $r2, $r0, $r1;
+    
+    //如果一条指令具有谓词寄存器。
     if (pI->has_pred()) {
       const operand_info &pred = pI->get_pred();
       ptx_reg_t pred_value = get_operand_value(pred, pred, PRED_TYPE, this, 0);
@@ -2327,6 +2366,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
     int inst_opcode = pI->get_opcode();
 
     if (skip) {
+      //在谓词测试之后，如果设置了[skip]跳过标志，则停用线程通道，否则执行该条指令。
       inst.set_not_active(lane_id);
     } else {
       const ptx_instruction *pI_saved = pI;

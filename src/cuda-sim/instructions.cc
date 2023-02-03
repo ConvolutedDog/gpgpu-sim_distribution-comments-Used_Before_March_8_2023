@@ -26,6 +26,31 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
+//opcodes.def文件用于为每种类型的指令指定模拟函数。opcodes.def文件类似于：
+//    OP_DEF(ABS_OP,abs_impl,"abs",1,1)
+//    OP_DEF(ADD_OP,add_impl,"add",1,1)
+//    OP_DEF(ADDP_OP,addp_impl,"addp",1,1)
+//    OP_DEF(ADDC_OP,addc_impl,"addc",1,1)
+//    OP_DEF(AND_OP,and_impl,"and",1,1)
+//    OP_DEF(ANDN_OP,andn_impl,"andn",1,1)
+//    OP_DEF(ATOM_OP,atom_impl,"atom",1,3)
+//    OP_DEF(BAR_OP,bar_sync_impl,"bar.sync",1,3)
+//    OP_DEF(BFE_OP,bfe_impl,"bfe",1,1)
+//    OP_DEF(BFI_OP,bfi_impl,"bfi",1,1)
+//    OP_DEF(BFIND_OP,bfind_impl,"bfind",1,1)
+//    OP_DEF(BRA_OP,bra_impl,"bra",0,3)
+//并且每个OP_DEF宏的第二参数作为指向处理相应指令类型的函数的指针。例如，对于bar指令，处理函数是
+//src/cuda-sim/instructions.cc中定义的bra_impl：
+//    void bra_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
+//        const operand_info &target = pI->dst();
+//        ptx_reg_t target_pc =
+//        thread->get_operand_value(target, target, U32_TYPE, thread, 1);
+//        thread->m_branch_taken = true;
+//        thread->set_npc(target_pc);
+//    }
+//需要注意的是，当前GPGPU-Sim版本中仍有许多指令未实现。
+
 #include "instructions.h"
 #include "half.h"
 #include "half.hpp"

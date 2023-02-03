@@ -2390,6 +2390,8 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       // Tensorcore is warp synchronous operation. So these instructions needs
       // to be executed only once. To make the simulation faster removing the
       // redundant tensorcore operation
+      //Tensorcore是warp同步操作。所以这些指令只需要执行一次。为了使模拟更快地去除冗余的Tensorcore操
+      //作。
       if (!tensorcore_op(inst_opcode) ||
           ((tensorcore_op(inst_opcode)) && (lane_id == 0))) {
         switch (inst_opcode) {
@@ -2412,6 +2414,32 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
             break;
         }
       }
+
+      //在上面的代码中，实际的指令执行是在switch-case块中模拟的，其中包含一个名为opcodes.def的文件，
+      //用于为每种类型的指令指定模拟函数。opcodes.def文件类似于：
+      //    OP_DEF(ABS_OP,abs_impl,"abs",1,1)
+      //    OP_DEF(ADD_OP,add_impl,"add",1,1)
+      //    OP_DEF(ADDP_OP,addp_impl,"addp",1,1)
+      //    OP_DEF(ADDC_OP,addc_impl,"addc",1,1)
+      //    OP_DEF(AND_OP,and_impl,"and",1,1)
+      //    OP_DEF(ANDN_OP,andn_impl,"andn",1,1)
+      //    OP_DEF(ATOM_OP,atom_impl,"atom",1,3)
+      //    OP_DEF(BAR_OP,bar_sync_impl,"bar.sync",1,3)
+      //    OP_DEF(BFE_OP,bfe_impl,"bfe",1,1)
+      //    OP_DEF(BFI_OP,bfi_impl,"bfi",1,1)
+      //    OP_DEF(BFIND_OP,bfind_impl,"bfind",1,1)
+      //    OP_DEF(BRA_OP,bra_impl,"bra",0,3)
+      //并且每个OP_DEF宏的第二参数作为指向处理相应指令类型的函数的指针。例如，对于bar指令，处理函数是
+      //src/cuda-sim/instructions.cc中定义的bra_impl：
+      //    void bra_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
+      //        const operand_info &target = pI->dst();
+      //        ptx_reg_t target_pc =
+      //        thread->get_operand_value(target, target, U32_TYPE, thread, 1);
+      //        thread->m_branch_taken = true;
+      //        thread->set_npc(target_pc);
+      //    }
+      //需要注意的是，当前GPGPU-Sim版本中仍有许多指令未实现。
+
       delete pJ;
       pI = pI_saved;
 
@@ -2451,6 +2479,10 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
     memory_space_t insn_space = undefined_space;
     _memory_op_t insn_memory_op = no_memory_op;
     unsigned insn_data_size = 0;
+
+    //ptx_thread_info::ptx_exec_inst()函数之后的代码主要是调试和统计信息收集代码。
+    //然而，ptx_thread_info::ptx_exec_inst()中下述代码段需要解释：
+    //下面的代码检查指令是否包含内存读取或写入，如果是，则设置一些变量以供以后使用。
     if ((pI->has_memory_read() || pI->has_memory_write())) {
       if (!((inst_opcode == MMA_LD_OP || inst_opcode == MMA_ST_OP))) {
         insn_memaddr = last_eaddr();
@@ -2467,6 +2499,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
                         false /*not atomic*/);
     }
 
+    //下面的代码检查原子指令并设置回调函数来处理原子指令。
     if (pI->get_opcode() == ATOM_OP) {
       insn_memaddr = last_eaddr();
       insn_space = last_space();
@@ -2476,6 +2509,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       insn_data_size = datatype2size(to_type);
     }
 
+    //下面的代码检查纹理操作。
     if (pI->get_opcode() == TEX_OP) {
       inst.set_addr(lane_id, last_eaddr());
       assert(inst.space == last_space());

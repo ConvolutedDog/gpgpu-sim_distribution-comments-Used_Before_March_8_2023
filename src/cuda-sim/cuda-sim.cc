@@ -2269,19 +2269,19 @@ int tensorcore_op(int inst_opcode) {
     core_t::execute_warp_inst_t
 内完成的。时序模拟器传递要执行的指令的动态实例，而功能模型则相应地推进线程的状态。
 
-在指令解析之后，用于功能执行的指令被表示为包含在 function_info 对象中的 ptx_instruction 对象
-（见 cuda-sim/ptx_ir.{h/cc}）。每个标量线程由一个 ptx_thread_info 对象表示。执行一条指令
-（功能上）主要是通过调用 ptx_thread_info::ptx_exec_inst() 完成的。
-执行指令简单地从使用函数 ptx_sim_init_thread （在 cuda-sim.cc 中）初始化标量线程开始，然后使
-用 function_info::ptx_exec_inst() 在warp中执行标量线程。
+在指令解析之后，用于功能执行的指令被表示为包含在 function_info 对象中的 ptx_instruction 对象（见 
+cuda-sim/ptx_ir.{h/cc}）。每个标量线程由一个 ptx_thread_info 对象表示。执行一条指令（功能上）主要是
+通过调用 ptx_thread_info::ptx_exec_inst() 完成的。
+执行指令简单地从使用函数 ptx_sim_init_thread （在 cuda-sim.cc 中）初始化标量线程开始，然后使用 
+function_info::ptx_exec_inst() 在warp中执行标量线程。
 
-ptx_thread_info::ptx_exec_inst 是指令真正被执行的地方。我们检查指令的操作码并调用相应的函数，
-文件 opcodes.def 包含用于执行每个指令的函数。每个指令函数都需要两个 ptx_instruction 和 
-ptx_thread_info 的参数，这两个参数用于接收指令和执行中的线程的数据。
-信息从 ptx_exec_inst 的执行中传回给执行warp的函数，通过修改以引用方式传递给 ptx_exec_inst
-的 warp_inst_t 参数，所以对于原子，我们表示执行的warp指令是原子的，并添加一个回调到
-warp_inst_t ，设置原子标志，然后由warp执行函数检查该标志，以便进行回调，用于执行原子（详见 
-cuda-sim.cc 中的 functionalCoreSim::executeWarp ）。
+ptx_thread_info::ptx_exec_inst 是指令真正被执行的地方。我们检查指令的操作码并调用相应的函数，文件 
+opcodes.def 包含用于执行每个指令的函数。每个指令函数都需要两个 ptx_instruction 和 ptx_thread_info 
+的参数，这两个参数用于接收指令和执行中的线程的数据。
+信息从 ptx_exec_inst 的执行中传回给执行warp的函数，通过修改以引用方式传递给 ptx_exec_inst 的 
+warp_inst_t 参数，所以对于原子，我们表示执行的warp指令是原子的，并添加一个回调到 warp_inst_t ，设置
+原子标志，然后由warp执行函数检查该标志，以便进行回调，用于执行原子（详见 cuda-sim.cc 中的
+functionalCoreSim::executeWarp ）。
 */
 void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
   bool skip = false;

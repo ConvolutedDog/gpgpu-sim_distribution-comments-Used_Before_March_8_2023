@@ -1853,6 +1853,13 @@ unsigned function_info::get_args_aligned_size() {
   return m_args_aligned_size;
 }
 
+/*
+在向 function_info 对象添加所有的参数后，调用 function_info::finalize(...) ，它将存储在 
+    function_info::m_ptx_kernel_param_info 
+映射中的内核参数复制到上面提到的 kernel_info_t 对象中分配的参数内存。如果之前在 
+    function_info::add_param_data(...)
+中没有做，每个内核参数的地址会被添加到 function_info 对象的符号表中。
+*/
 void function_info::finalize(memory_space *param_mem) {
   unsigned param_address = 0;
   for (std::map<unsigned, param_info>::iterator i =
@@ -1862,9 +1869,16 @@ void function_info::finalize(memory_space *param_mem) {
     if (p.is_ptr_shared())
       continue;  // Pointer to local memory: Should we pass the allocated shared
                  // memory address to the param memory space?
-    std::string name = p.get_name();
-    int type = p.get_type();
-    param_t param_value = p.get_value();
+    //param_t在ptx_sim.h中定义：
+    //  struct param_t {
+    //    const void *pdata;
+    //    int type;
+    //    size_t size;
+    //    size_t offset;
+    //  };
+    std::string name = p.get_name();     //name
+    int type = p.get_type();             //type
+    param_t param_value = p.get_value(); //value
     param_value.type = type;
     symbol *param = m_symtab->lookup(name.c_str());
     unsigned xtype = param->type()->get_key().scalar_type();
@@ -1882,6 +1896,8 @@ void function_info::finalize(memory_space *param_mem) {
     // copy the parameter over word-by-word so that parameter that crosses a
     // memory page can be copied over
     // Jin: copy parameter using aligned rules
+    //逐字复制参数，以便可以复制跨越内存页的参数。
+    //使用对齐规则复制参数。
     const type_info *paramtype = param->type();
     int align_amount = paramtype->get_key().get_alignment_spec();
     align_amount = (align_amount == -1) ? size : align_amount;
@@ -1961,6 +1977,14 @@ void function_info::list_param(FILE *fout) const {
   fflush(fout);
 }
 
+/*
+实时（JIT）编译器配置。
+GPGPU-Sim模拟NVIDIA使用的并行线程执行（Parallel Thread eXecution，PTX）指令集。PTX是伪汇编指令集；它
+不直接在硬件上执行。ptxas是NVIDIA发布的汇编程序，用于将PTX汇编到硬件运行的本机指令集（SASS）中。每一代
+硬件都支持不同版本的SASS。因此，PTX被编译成多个版本的SASS，对应于编译时不同的硬件版本。尽管如此，PTX代码
+仍然嵌入到二进制文件中，以支持未来的硬件。在运行时，运行时系统根据可用硬件选择要运行的SASS的适当版本。如
+果没有，则运行时系统调用嵌入式PTX上的实时（JIT）编译器，将其编译为与可用硬件相对应的SASS。
+*/
 void function_info::ptx_jit_config(
     std::map<unsigned long long, size_t> mallocPtr_Size,
     memory_space *param_mem, gpgpu_t *gpu, dim3 gridDim, dim3 blockDim) {
@@ -2145,6 +2169,9 @@ void function_info::ptx_jit_config(
   counter++;
 }
 
+/*
+DEBUG相关，用到再补充。
+*/
 template <int activate_level>
 bool cuda_sim::ptx_debug_exec_dump_cond(int thd_uid, addr_t pc) {
   if (g_debug_execution >= activate_level) {
@@ -2163,6 +2190,21 @@ bool cuda_sim::ptx_debug_exec_dump_cond(int thd_uid, addr_t pc) {
   return false;
 }
 
+/*
+init_inst_classification_stat函数在下面的ptx_exec_inst函数中调用：
+    if (m_gpu->gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification) {
+      m_gpu->gpgpu_ctx->func_sim->init_inst_classification_stat();
+      ...
+    }
+而gpgpu_ptx_instruction_classification在gpgpu-sim.cc中被配置，意为启用指令分类：
+    option_parser_register(
+      opp, "-gpgpu_ptx_instruction_classification", OPT_INT32,
+      &(gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification),
+      "if enabled will classify ptx instruction types per kernel (Max 255 "
+      "kernels now)",
+      "0");
+在配置文件中，"-gpgpu_ptx_instruction_classification"默认设置为0，后面用到再补充。
+*/
 void cuda_sim::init_inst_classification_stat() {
   static std::set<unsigned> init;
   if (init.find(g_ptx_kernel_count) != init.end()) return;
@@ -2188,18 +2230,22 @@ void cuda_sim::init_inst_classification_stat() {
       StatCreate(kernelname, 1, 100);
 }
 
+/*
+纹理存储相关，用到再补充。
+*/
 static unsigned get_tex_datasize(const ptx_instruction *pI,
                                  ptx_thread_info *thread) {
   const operand_info &src1 = pI->src1();  // the name of the texture
   std::string texname = src1.name();
 
-  /*
-    For programs with many streams, textures can be bound and unbound
-    asynchronously.  This means we need to use the kernel's "snapshot" of
-    the state of the texture mappings when it was launched (so that we
-    don't try to access the incorrect texture mapping if it's been updated,
-    or that we don't access a mapping that has been unbound).
-   */
+  //For programs with many streams, textures can be bound and unbound
+  //asynchronously.  This means we need to use the kernel's "snapshot" of
+  //the state of the texture mappings when it was launched (so that we
+  //don't try to access the incorrect texture mapping if it's been updated,
+  //or that we don't access a mapping that has been unbound).
+  //对于具有许多流的程序，可以异步绑定和解除绑定纹理。这意味着我们需要在启动时使用内核的纹理映射状态的
+  //“快照”（这样，如果纹理映射已更新，我们就不会尝试访问不正确的纹理映射，或者我们不会访问未绑定的映射）。
+
   kernel_info_t &k = thread->get_kernel();
   const struct textureInfo *texInfo = k.get_texinfo(texname);
 
@@ -2207,6 +2253,9 @@ static unsigned get_tex_datasize(const ptx_instruction *pI,
   return data_size;
 }
 
+/*
+判断是否是Tensor Core上的指令，包括 mma,mma.load,mma.store，是则返回1，不是则返回0。
+*/
 int tensorcore_op(int inst_opcode) {
   if ((inst_opcode == MMA_OP) || (inst_opcode == MMA_LD_OP) ||
       (inst_opcode == MMA_ST_OP))
@@ -2214,6 +2263,10 @@ int tensorcore_op(int inst_opcode) {
   else
     return 0;
 }
+
+/*
+
+*/
 void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
   bool skip = false;
   int op_classification = 0;

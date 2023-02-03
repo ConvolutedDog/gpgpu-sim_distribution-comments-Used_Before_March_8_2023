@@ -502,5 +502,4 @@ git status
 git add -A
 git commit -m "Update cuda-sim.cc"
 git push
-liyuhang 
 ```

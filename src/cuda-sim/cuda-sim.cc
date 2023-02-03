@@ -2284,6 +2284,7 @@ warp_inst_t ，设置原子标志，然后由warp执行函数检查该标志，�
 cuda-sim.cc 中的 functionalCoreSim::executeWarp ）。
 */
 void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
+  //
   bool skip = false;
   int op_classification = 0;
   addr_t pc = next_instr();

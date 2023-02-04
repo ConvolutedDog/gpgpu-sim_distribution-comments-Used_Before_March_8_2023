@@ -2282,16 +2282,43 @@ opcodes.def 包含用于执行每个指令的函数。每个指令函数都需�
 warp_inst_t 参数，所以对于原子，我们表示执行的warp指令是原子的，并添加一个回调到 warp_inst_t ，设置
 原子标志，然后由warp执行函数检查该标志，以便进行回调，用于执行原子（详见 cuda-sim.cc 中的
 functionalCoreSim::executeWarp ）。
+
+ptx_exec_inst(warp_inst_t &inst, unsigned lane_id)函数在abstract_hardware_model.h中引用：
+    void core_t::execute_warp_inst_t(warp_inst_t &inst, unsigned warpId) {
+      //t是指thread ID号，m_warp_size为warp的大小，即一个warp中线程的数量。
+      for (unsigned t = 0; t < m_warp_size; t++) {
+        //判断活跃编码，即判断由于分支的情况，该线程对当前指令的执行情况，inst.active(t)为1时，执行；
+        //inst.active(t)为0时，不执行。
+        if (inst.active(t)) {
+          if (warpId == (unsigned(-1))) warpId = inst.warp_id();
+          //计算当前线程编号。
+          unsigned tid = m_warp_size * warpId + t;
+          //让第t个线程执行inst指令。
+          m_thread[tid]->ptx_exec_inst(inst, t);
+
+          // virtual function
+          checkExecutionStatusAndUpdate(inst, t, tid);
+        }
+      }
+    }
+
+ptx_exec_inst函数的参数 warp_inst_t &inst,unsigned lane_id，指的是，当前执行线程的ID和指令inst。
 */
 void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
+  //后面检查指令是否为谓词指令用到：如果是，检查是否满足谓词条件，并相应地更新标志[skip]，以指示是否
+  //应执行此指令或者跳过执行该指令。
   bool skip = false;
   int op_classification = 0;
+  //获取下一条指令的PC值。
   addr_t pc = next_instr();
   assert(pc ==
          inst.pc);  // make sure timing model and functional model are in sync
+  //确保时序模型和功能模型同步。
+
   //根据pc值获得当前执行的指令 ptx_instruction 对象 pI。
   const ptx_instruction *pI = m_func_info->get_instruction(pc);
 
+  //设置下一条指令的PC值，NPC=pc+pI指令大小。
   set_npc(pc + pI->inst_size());
 
   try {
@@ -2613,10 +2640,39 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
   }
 }
 
+/*
+设置GPU的SIMT Core（Shader Core）的个数，即SM的个数。
+*/
 void cuda_sim::set_param_gpgpu_num_shaders(int num_shaders) {
   gpgpu_param_num_shaders = num_shaders;
 }
 
+/*
+返回内核函数的属性，如PTX版本和目标SM等。也保存该内核所使内存和寄存器的数量等。
+set_kernel_info()在ptx_ir.h中定义：
+    virtual const void set_kernel_info(const struct gpgpu_ptx_sim_info &info) {
+        m_kernel_info = info;
+        m_kernel_info.ptx_version = 10 * get_ptx_version().ver();
+        m_kernel_info.sm_target = get_ptx_version().target();
+        // THIS DEPENDS ON ptxas being called after the PTX is parsed.
+      m_kernel_info.maxthreads = maxnt_id;
+    }
+其中gpgpu_ptx_sim_info又在abstract_hardware_model.h中定义：
+    struct gpgpu_ptx_sim_info {
+        // Holds properties of the kernel (Kernel's resource use).
+        // These will be set to zero if a ptxinfo file is not present.
+        //保存内核的属性（内核的资源使用）。
+        //如果不存在ptxinfo文件，这些值将设置为零。
+        int lmem;                 // local memory大小
+        int smem;                 // shared memory大小
+        int cmem;                 // constant memory大小
+        int gmem;                 // global memory大小
+        int regs;                 // 寄存器数量
+        unsigned maxthreads;      // 最大线程数
+        unsigned ptx_version;     // PTX version
+        unsigned sm_target;       // 目标 SM
+    };
+*/
 const struct gpgpu_ptx_sim_info *ptx_sim_kernel_info(
     const function_info *kernel) {
   return kernel->get_kernel_info();

@@ -934,6 +934,9 @@ struct gpgpu_recon_t {
   class ptx_instruction *target_inst;
 };
 
+/*
+单条PTX指令类。
+*/
 class ptx_instruction : public warp_inst_t {
  public:
   ptx_instruction(int opcode, const symbol *pred, int neg_pred, int pred_mod,

@@ -2682,6 +2682,7 @@ const warp_inst_t *gpgpu_context::ptx_fetch_inst(address_type pc) {
   return pc_to_instruction(pc);
 }
 
+
 unsigned ptx_sim_init_thread(kernel_info_t &kernel,
                              ptx_thread_info **thread_info, int sid,
                              unsigned tid, unsigned threads_left,

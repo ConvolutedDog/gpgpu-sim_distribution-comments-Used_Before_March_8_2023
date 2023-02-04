@@ -1176,10 +1176,15 @@ void simt_stack::update(simt_mask_t &thread_done, addr_vector_t &next_pc,
 }
 
 void core_t::execute_warp_inst_t(warp_inst_t &inst, unsigned warpId) {
+  //t是指thread ID号，m_warp_size为warp的大小，即一个warp中线程的数量。
   for (unsigned t = 0; t < m_warp_size; t++) {
+    //判断活跃编码，即判断由于分支的情况，该线程对当前指令的执行情况，inst.active(t)为1时，执行；
+    //inst.active(t)为0时，不执行。
     if (inst.active(t)) {
       if (warpId == (unsigned(-1))) warpId = inst.warp_id();
+      //计算当前线程编号。
       unsigned tid = m_warp_size * warpId + t;
+      //让第t个线程执行inst指令。
       m_thread[tid]->ptx_exec_inst(inst, t);
 
       // virtual function

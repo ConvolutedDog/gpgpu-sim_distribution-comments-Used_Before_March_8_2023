@@ -2678,10 +2678,20 @@ const struct gpgpu_ptx_sim_info *ptx_sim_kernel_info(
   return kernel->get_kernel_info();
 }
 
+/*
+依据PC值，获取指令。
+*/
 const warp_inst_t *gpgpu_context::ptx_fetch_inst(address_type pc) {
   return pc_to_instruction(pc);
 }
 
+/*
+执行指令简单地从使用函数 ptx_sim_init_thread 初始化标量线程开始，然后使用上面的 ptx_exec_inst() 在
+warp中执行标量线程。即每个线程的功能状态通过调用 ptx_sim_init_thread 进行初始化。
+
+共享内存空间是整个CTA（线程块）所共有的，当每个CTA被分派执行时（在函数 ptx_sim_init_thread() 中），
+为其分配一个唯一的 memory_space 对象。当CTA执行完毕后，该对象被取消分配。
+*/
 unsigned ptx_sim_init_thread(kernel_info_t &kernel,
                              ptx_thread_info **thread_info, int sid,
                              unsigned tid, unsigned threads_left,

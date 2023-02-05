@@ -103,6 +103,10 @@ class memory_space {
   virtual void set_watch(addr_t addr, unsigned watchpoint) = 0;
 };
 
+/*
+memory_space 为基类，memory_space_impl 为派生出的类，后者以公有的方法继承前者。memory_space_impl 
+类实现了由抽象类 memory_space 定义的读写接口。
+*/
 template <unsigned BSIZE>
 class memory_space_impl : public memory_space {
  public:

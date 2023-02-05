@@ -2691,6 +2691,8 @@ warp中执行标量线程。即每个线程的功能状态通过调用 ptx_sim_i
 
 共享内存空间是整个CTA（线程块）所共有的，当每个CTA被分派执行时（在函数 ptx_sim_init_thread() 中），
 为其分配一个唯一的 memory_space 对象。当CTA执行完毕后，该对象被取消分配。
+
+ptx_sim_init_thread 在 functionalCoreSim::initializeCTA 中被调用，参数的详细说明见该调用处。
 */
 unsigned ptx_sim_init_thread(kernel_info_t &kernel,
                              ptx_thread_info **thread_info, int sid,
@@ -3260,6 +3262,38 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
   for (int i = 0; i < m_warp_count * m_warp_size; i++) m_thread[i] = NULL;
 
   // get threads for a cta
+  //为一个CTA获取线程。
+  //m_kernel->threads_per_cta()指的是每个CTA的线程总数，对CTA内的所有的线程遍历。
+  //ptx_sim_init_thread的函数原型为上面的：
+  //    unsigned ptx_sim_init_thread(kernel_info_t &kernel,
+  //                                 ptx_thread_info **thread_info, 
+  //                                 int sid,
+  //                                 unsigned tid, 
+  //                                 unsigned threads_left,
+  //                                 unsigned num_threads, 
+  //                                 core_t *core,
+  //                                 unsigned hw_cta_id, 
+  //                                 unsigned hw_warp_id,
+  //                                 gpgpu_t *gpu, 
+  //                                 bool isInFunctionalSimulationMode)
+  //其参数分别为：
+  //    1. kernel_info_t &kernel：内核函数信息类。
+  //    2. ptx_thread_info **thread_info：m_thread 成员变量是SIMT Core类 shader_core_ctx 中       
+  //       ptx_thread_info 的数组，维护该SIMT Core中所有活动线程的功能状态。
+  //    3. int sid：这里传入的是0。???
+  //    4. unsigned tid：循环体里的 i 即为线程编号 tid。
+  //    5. unsigned threads_left：CTA里当前线程往后数，剩余线程的数量，由于CTA内的线程数量为 m_kernel->
+  //       threads_per_cta()，且当前线程编号为 i，因此 threads_left = m_kernel->threads_per_cta()-i。
+  //    6. unsigned num_threads：CTA里的线程总数，为 m_kernel->threads_per_cta()。
+  //    7. core_t *core：class core_t 是内核的抽象基类，用于功能和性能模型。 shader_core_ctx（时间序模型
+  //       中实现SIMT Core的类）来源于这个类，即SIMT Core微架构是由 shader.h/cc 中的 shader_core_ctx类
+  //       实现的。抽象类 core_t 拥有指令执行功能上所需的最基本的数据结构和程序。 functionalCoreSim类继承
+  //       自 core_t 抽象类，它包含了许多纯函数仿真以及性能仿真所使用的函数仿真数据结构和程序。
+  //    8. unsigned hw_cta_id：硬件CTA的编号，可能由于每个CTA现在只支持一个线程块的运行，这里传入的是0。???
+  //    9. unsigned hw_warp_id：硬件warp的编号，当前线程的编号，除以一个warp的大小即为warp的编号，该warp的
+  //       编号为：i/m_warp_size。
+  //    10.gpgpu_t *gpu：class gpgpu_t是实现GPU功能模拟器的顶层类。
+  //    11.bool isInFunctionalSimulationMode：所有模拟包括功能/性能模拟都要求功能模拟为真。
   for (unsigned i = 0; i < m_kernel->threads_per_cta(); i++) {
     ptx_sim_init_thread(*m_kernel, &m_thread[i], 0, i,
                         m_kernel->threads_per_cta() - i,

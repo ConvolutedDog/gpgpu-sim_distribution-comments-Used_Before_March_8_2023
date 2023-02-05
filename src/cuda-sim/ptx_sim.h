@@ -312,7 +312,7 @@ warp执行。
     ptx_sim_init_thread 初始化每个线程的功能状态。此外，时序模型还通过从功能模型中获取起始PC来初始
     化SIMT堆栈和warp状态。
 
-ptx_thread_info对象包含单个标量线程（OpenCL中的work item）的功能仿真状态。这包括以下内容：
+ptx_thread_info 对象包含单个标量线程（OpenCL中的work item）的功能仿真状态。这包括以下内容：
     a. 寄存器值存储
     b. 本地内存存储（OpenCL中的私有内存）
     c. 共享内存存储（OpenCL中的本地内存）。注意，同一线程块/Work Wrap的所有标量线程都

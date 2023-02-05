@@ -31,6 +31,14 @@
 #include "../../libcuda/gpgpu_context.h"
 #include "../debug.h"
 
+/*
+为了优化功能模拟的性能，内存是用哈希表实现的。哈希表的块大小是模板类 memory_space_impl 的模板参数。
+memory_space_impl 类实现了由抽象类 memory_space 定义的读写接口。在内部，每个 memory_space_impl 
+对象包含一组内存页（由类模板 mem_storage 实现）。它使用STL无序Map（如果无序Map不可用，则恢复为STL 
+Map）来将页与它们相应的地址联系起来。每个 mem_storage 对象是一个具有读写功能的字节数组。最初，每个 
+memory_space 对象是空的，当访问内存空间中单个页面对应的地址时（通过 LD/ST 指令或 cudaMemcpy()），
+页面被按需分配。
+*/
 template <unsigned BSIZE>
 memory_space_impl<BSIZE>::memory_space_impl(std::string name,
                                             unsigned hash_size) {

@@ -2692,7 +2692,7 @@ warp中执行标量线程。即每个线程的功能状态通过调用 ptx_sim_i
 共享内存空间是整个CTA（线程块）所共有的，当每个CTA被分派执行时（在函数 ptx_sim_init_thread() 中），
 为其分配一个唯一的 memory_space 对象。当CTA执行完毕后，该对象被取消分配。
 
-ptx_sim_init_thread 在 functionalCoreSim::initializeCTA 中被调用，参数的详细说明见该调用处。
+ptx_sim_init_thread 在 functionalCoreSim::initializeCTA 函数中被调用，参数的详细说明见该调用处。
 */
 unsigned ptx_sim_init_thread(kernel_info_t &kernel,
                              ptx_thread_info **thread_info, int sid,
@@ -2702,7 +2702,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
                              gpgpu_t *gpu, bool isInFunctionalSimulationMode) {
   //根据给定的内核信息kernel，获取该内核中的活跃线程。
   std::list<ptx_thread_info *> &active_threads = kernel.active_threads();
-
+  
   static std::map<unsigned, memory_space *> shared_memory_lookup;
   static std::map<unsigned, memory_space *> sstarr_memory_lookup;
   static std::map<unsigned, ptx_cta_info *> ptx_cta_lookup;
@@ -3259,10 +3259,12 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
     m_warpAtBarrier[i] = false;
     m_liveThreadCount[i] = 0;
   }
+
+  //将所有的线程置空，以后续执行初始化。
   for (int i = 0; i < m_warp_count * m_warp_size; i++) m_thread[i] = NULL;
 
   // get threads for a cta
-  //为一个CTA获取线程。
+  //为一个CTA的所有线程执行初始化任务。
   //m_kernel->threads_per_cta()指的是每个CTA的线程总数，对CTA内的所有的线程遍历。
   //ptx_sim_init_thread的函数原型为上面的：
   //    unsigned ptx_sim_init_thread(kernel_info_t &kernel,
@@ -3306,7 +3308,7 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
       m_thread[i]->resume_reg_thread(fname, symtab);
     ctaLiveThreads++;
   }
-
+  //创建warp。
   for (int k = 0; k < m_warp_count; k++) createWarp(k);
 }
 

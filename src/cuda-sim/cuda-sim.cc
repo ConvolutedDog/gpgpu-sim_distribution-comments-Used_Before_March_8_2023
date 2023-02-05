@@ -2698,6 +2698,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
                              unsigned num_threads, core_t *core,
                              unsigned hw_cta_id, unsigned hw_warp_id,
                              gpgpu_t *gpu, bool isInFunctionalSimulationMode) {
+  //根据给定的内核信息kernel，获取该内核中的活跃线程。
   std::list<ptx_thread_info *> &active_threads = kernel.active_threads();
 
   static std::map<unsigned, memory_space *> shared_memory_lookup;
@@ -2707,6 +2708,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
   static std::map<unsigned, std::map<unsigned, memory_space *> >
       local_memory_lookup;
 
+  //thread_info线程信息非空，线程还保留着上一个执行线程的信息，需要将此信息删除。
   if (*thread_info != NULL) {
     ptx_thread_info *thd = *thread_info;
     assert(thd->is_done());
@@ -2719,11 +2721,14 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
           ctaid.x, ctaid.y, ctaid.z, t.x, t.y, t.z, thd->get_uid());
       fflush(stdout);
     }
+    //挂起thd指向的线程。
     thd->m_cta_info->register_deleted_thread(thd);
     delete thd;
+    //删除thread_info的信息。
     *thread_info = NULL;
   }
 
+  //内核中的活跃线程非空，代表后续要执行，需要初始化线程。
   if (!active_threads.empty()) {
     assert(active_threads.size() <= threads_left);
     ptx_thread_info *thd = active_threads.front();
@@ -2752,13 +2757,20 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
   memory_space *shared_mem = NULL;
   memory_space *sstarr_mem = NULL;
 
+  //根据内核函数的信息kernel获取其参数中的每个CTA（线程块）中的线程数。
   unsigned cta_size = kernel.threads_per_cta();
+  //判断该内核函数的执行需要，每个SM最大的线程块数量，num_threads为总线程数，cta_size为每个CTA（线
+  //程块）中的线程数。这个参数其实没啥用，因为它是假设的硬件只有一个SM，后买这个参数也用不到。
   unsigned max_cta_per_sm = num_threads / cta_size;  // e.g., 256 / 48 = 5
   assert(max_cta_per_sm > 0);
 
   // unsigned sm_idx = (tid/cta_size)*gpgpu_param_num_shaders + sid;
+  //gpgpu_param_num_shaders为GPU的SIMT Core的个数，即SM的个数。
   unsigned sm_idx =
       hw_cta_id * gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders + sid;
+
+  //printf("==<gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders>=%d, <hw_cta_id>=%d, <sid>=%d\n", 
+  //        gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders, hw_cta_id, sid);
 
   if (shared_memory_lookup.find(sm_idx) == shared_memory_lookup.end()) {
     if (g_debug_execution >= 1) {
@@ -3234,6 +3246,9 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   fflush(stdout);
 }
 
+/*
+
+*/
 void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
   int ctaLiveThreads = 0;
   symbol_table *symtab = m_kernel->entry()->get_symtab();

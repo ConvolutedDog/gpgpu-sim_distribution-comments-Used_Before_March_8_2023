@@ -2,6 +2,6 @@
     "files.associations": {
         "*.m": "matlab",
         "*.def": "cpp",
-        "*.ipp": "cpp",
+        "*.ipp": "cpp"
     }
 }

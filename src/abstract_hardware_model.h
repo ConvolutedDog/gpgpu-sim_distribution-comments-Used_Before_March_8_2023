@@ -54,7 +54,7 @@ enum _memory_space_t {
     param_space_local,    /* local to a thread : read-writable */
     const_space,
     tex_space,
-    surf_space, // render surfaces
+    surf_space, // render surfaces 
     global_space,
     generic_space,
     instruction_space

@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.m": "matlab",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "*.ipp": "cpp"
     }
 }

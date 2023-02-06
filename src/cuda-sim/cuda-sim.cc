@@ -2713,7 +2713,9 @@ const warp_inst_t *gpgpu_context::ptx_fetch_inst(address_type pc) {
 
 /*
 执行指令简单地从使用函数 ptx_sim_init_thread 初始化标量线程开始，然后使用上面的 ptx_exec_inst() 在
-warp中执行标量线程。即每个线程的功能状态通过调用 ptx_sim_init_thread 进行初始化。
+warp中执行标量线程。即每个线程的功能状态通过调用 ptx_sim_init_thread 进行初始化。这里的函数仅是对单
+个线程的指令进行初始化的，参数中包括指定某个线程的 unsigned hw_cta_id, unsigned hw_warp_id, 以及
+ptx_thread_info **thread_info, int sid, unsigned tid。
 
 共享内存空间是整个CTA（线程块）所共有的，当每个CTA被分派执行时（在函数 ptx_sim_init_thread() 中），
 为其分配一个唯一的 memory_space 对象。当CTA执行完毕后，该对象被取消分配。
@@ -2758,6 +2760,14 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
   }
 
   //内核中的活跃线程非空，代表后续要执行，需要初始化线程。
+  //ptx_thread_info对象包含单个标量线程（OpenCL中的work item）的功能仿真状态。这包括以下内容：
+  //  a. 寄存器值存储
+  //  b. 本地内存存储（OpenCL中的私有内存）
+  //  c. 共享内存存储（OpenCL中的本地内存）。注意，同一线程块/Work Wrap的所有标量线程都
+  //  d. 会访问相同的共享内存存储。
+  //  e. 程序计数器（PC）
+  //  f. 调用堆栈
+  //  g. 线程ID（网格启动中的软件ID，以及表明它在时序模型中占据哪个硬件线程槽的硬件ID)
   if (!active_threads.empty()) {
     assert(active_threads.size() <= threads_left);
     ptx_thread_info *thd = active_threads.front();
@@ -2769,20 +2779,23 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
     return 1;
   }
 
+  //没有更多的CTA可执行，内核函数运行完毕。
   if (kernel.no_more_ctas_to_run()) {
     return 0;  // finished!
   }
-
+  
   if (threads_left < kernel.threads_per_cta()) {
     return 0;
   }
 
+  //DEBUG用，后续再补充。
   if (g_debug_execution == -1) {
     printf("GPGPU-Sim PTX simulator:  STARTING THREAD ALLOCATION --> \n");
     fflush(stdout);
   }
 
   // initializing new CTA
+  //初始化新的CTA。
   ptx_cta_info *cta_info = NULL;
   memory_space *shared_mem = NULL;
   memory_space *sstarr_mem = NULL;
@@ -2822,12 +2835,14 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
       printf("  <CTA realloc> : sm_idx=%u sid=%u max_cta_per_sm=%u\n", sm_idx,
              sid, max_cta_per_sm);
     }
+    //依据SM ID，获取当前SM的shared_mem和sstarr_mem，cta_info
     shared_mem = shared_memory_lookup[sm_idx];
     sstarr_mem = sstarr_memory_lookup[sm_idx];
     cta_info = ptx_cta_lookup[sm_idx];
     cta_info->check_cta_thread_status_and_reset();
   }
 
+  //依据SM ID，获取当前SM的local_mem。
   std::map<unsigned, memory_space *> &local_mem_lookup =
       local_memory_lookup[sid];
   while (kernel.more_threads_in_cta()) {
@@ -2884,6 +2899,8 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
     }
     active_threads.push_back(thd);
   }
+
+  //DEBUG用，后续再补充。
   if (g_debug_execution == -1) {
     printf("GPGPU-Sim PTX simulator:  <-- FINISHING THREAD ALLOCATION\n");
     fflush(stdout);
@@ -2900,6 +2917,9 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
   return 1;
 }
 
+/*
+返回内核函数编译后的PTX指令的条数。
+*/
 size_t get_kernel_code_size(class function_info *entry) {
   return entry->get_function_size();
 }
@@ -2943,6 +2963,9 @@ void print_splash() {
   }
 }
 
+/*
+此函数只声明但没有调用，后续需要再补充。
+*/
 void cuda_sim::gpgpu_ptx_sim_register_const_variable(void *hostVar,
                                                      const char *deviceName,
                                                      size_t size) {
@@ -2951,6 +2974,9 @@ void cuda_sim::gpgpu_ptx_sim_register_const_variable(void *hostVar,
   g_const_name_lookup[hostVar] = deviceName;
 }
 
+/*
+此函数只声明但没有调用，后续需要再补充。
+*/
 void cuda_sim::gpgpu_ptx_sim_register_global_variable(void *hostVar,
                                                       const char *deviceName,
                                                       size_t size) {
@@ -2959,6 +2985,9 @@ void cuda_sim::gpgpu_ptx_sim_register_global_variable(void *hostVar,
   g_global_name_lookup[hostVar] = deviceName;
 }
 
+/*
+DEBUG用，在stream_manager.cc中有调用，后续需要再补充。
+*/
 void cuda_sim::gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src,
                                            size_t count, size_t offset, int to,
                                            gpgpu_t *gpu) {
@@ -3048,6 +3077,9 @@ void cuda_sim::gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src,
 
 extern int ptx_debug;
 
+/*
+读取一些gpgpu.config配置。
+*/
 void cuda_sim::read_sim_environment_variables() {
   ptx_debug = 0;
   g_debug_execution = 0;

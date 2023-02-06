@@ -1379,7 +1379,9 @@ class function_info {
   unsigned local_mem_framesize() const { return m_local_mem_framesize; }
   void set_framesize(unsigned sz) { m_local_mem_framesize = sz; }
   bool is_entry_point() const { return m_entry_point; }
+  //pdom_done是检查pdom是否完成的标志，返回这个标志
   bool is_pdom_set() const { return pdom_done; }  // return pdom flag
+  //一旦检查pdom完成，设置标志pdom_done = true。
   void set_pdom() { pdom_done = true; }           // set pdom flag
 
   void add_config_param(size_t size, unsigned alignment) {
@@ -1415,6 +1417,7 @@ class function_info {
   bool m_entry_point;
   bool m_extern;
   bool m_assembled;
+  //pdom_done是检查pdom是否完成的标志
   bool pdom_done;  // flag to check whether pdom is completed or not
   std::string m_name;
   ptx_instruction **m_instr_mem;

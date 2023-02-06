@@ -1504,6 +1504,7 @@ class shader_core_config : public core_config {
   bool gpgpu_clock_gated_reg_file;
   bool gpgpu_clock_gated_lanes;
   enum divergence_support_t model;
+  //每个Shader Core的线程数。
   unsigned n_thread_per_shader;
   unsigned n_regfile_gating_group;
   unsigned max_warps_per_shader;

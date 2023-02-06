@@ -3287,9 +3287,13 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
           ->max_cta_per_core);
   printf("Max CTA : %d\n", max_cta_tot);
 
+  //在GPGPU-Sim的配置文件中，-checkpoint_option一般不做配置，默认为0，后续用到再补充。
   int cp_op = gpgpu_ctx->the_gpgpusim->g_the_gpu->checkpoint_option;
+  //在GPGPU-Sim的配置文件中，-checkpoint_kernel一般不做配置，默认为1，后续用到再补充。
   int cp_kernel = gpgpu_ctx->the_gpgpusim->g_the_gpu->checkpoint_kernel;
+  //在GPGPU-Sim的配置文件中，-checkpoint_insn_Y一般不做配置，默认为0，后续用到再补充。
   cp_count = gpgpu_ctx->the_gpgpusim->g_the_gpu->checkpoint_insn_Y;
+  //在GPGPU-Sim的配置文件中，-checkpoint_CTA_t一般不做配置，默认为0，后续用到再补充。
   cp_cta_resume = gpgpu_ctx->the_gpgpusim->g_the_gpu->checkpoint_CTA_t;
   //统计已经发射出的CTA总数。
   int cta_launched = 0;
@@ -3307,6 +3311,9 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
     //         m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
     unsigned temp = kernel.get_next_cta_id_single();
     //判断是否CTA满足执行条件。
+    //在GPGPU-Sim的配置文件中，cp_op = -checkpoint_option一般不做配置，默认为0。
+    //在GPGPU-Sim的配置文件中，cp_kernel = -checkpoint_kernel一般不做配置，默认为1。
+    //在GPGPU-Sim的配置文件中，cp_cta_resume = -checkpoint_CTA_t一般不做配置，默认为0。
     if (cp_op == 0 ||
         (cp_op == 1 && cta_launched < cp_cta_resume &&
          kernel.get_uid() == cp_kernel) ||
@@ -3317,6 +3324,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
           &kernel, gpgpu_ctx->the_gpgpusim->g_the_gpu,
           gpgpu_ctx->the_gpgpusim->g_the_gpu->getShaderCoreConfig()->warp_size);
       //CTA执行。
+      //在GPGPU-Sim的配置文件中，cp_count = -checkpoint_insn_Y一般不做配置，默认为0。
       cta.execute(cp_count, temp);
 
 #if (CUDART_VERSION >= 5000)
@@ -3333,6 +3341,8 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   }
 
   //创造检查点，保存当前存储的状态。
+  //在GPGPU-Sim的配置文件中，cp_op = -checkpoint_option一般不做配置，默认为0。
+  //下面的if块暂时用不到，以后用到再补充。
   if (cp_op == 1) {
     char f1name[2048];
     snprintf(f1name, 2048, "checkpoint_files/global_mem_%d.txt",
@@ -3343,7 +3353,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   }
 
   // registering this kernel as done
-  //将此内核注册为已完成。
+  //将此内核注册为已完成。这里的注册完成函数估计没什么用，官方删除了。
 
   // openCL kernel simulation calls don't register the kernel so we don't
   // register its exit
@@ -3450,6 +3460,8 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
     assert(m_thread[i] != NULL && !m_thread[i]->is_done());
     char fname[2048];
     snprintf(fname, 2048, "checkpoint_files/thread_%d_0_reg.txt", i);
+    //在GPGPU-Sim的配置文件中，cp_cta_resume = -checkpoint_CTA_t一般不做配置，默认为0。
+    //下面的if块暂时用不到，以后用到再补充。
     if (m_gpu->gpgpu_ctx->func_sim->cp_cta_resume == 1)
       m_thread[i]->resume_reg_thread(fname, symtab);
     ctaLiveThreads++;
@@ -3462,23 +3474,42 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
 创建warp。
 */
 void functionalCoreSim::createWarp(unsigned warpId) {
+  //初始化标识warp内线程通道是否执行的掩码，处理线程分支。simt_mask_t在abstract_hardware_model.h中定义：
+  //    typedef std::bitset<MAX_WARP_SIZE_SIMT_STACK> simt_mask_t;
+  //它的类型为std::bitset，bitset是用来储存诸多bit，这些元素可以用来表示两种状态：0或1，true或false。可以很
+  //方便的用该容器快速实现状态储存。simt_mask_t的大小为 MAX_WARP_SIZE_SIMT_STACK，即一个SIMT堆栈的最大的
+  //warp（一个SIMT堆栈控制的所有的warp中的线程数量最多的warp）的线程数量（一般为32）。
   simt_mask_t initialMask;
+  //统计活跃线程数量。
   unsigned liveThreadsCount = 0;
+  //初始化，将initialMask的所有位均置为1。
   initialMask.set();
+  //对当前warp内的所有线程循环，warpID为当前warp的编号，m_warp_size指一个warp内有多少个线程。
   for (int i = warpId * m_warp_size; i < warpId * m_warp_size + m_warp_size;
        i++) {
+    //m_thread 成员变量是SIMT Core类 shader_core_ctx 中 ptx_thread_info 的数组，维护该SIMT Core中所有
+    //活动线程的功能状态。如果 m_thread[i] == NULL 即第 i 个线程的状态为空，则需要将 initialMask 的对应位
+    //置零。
     if (m_thread[i] == NULL)
+      //注意，这里 i 是所有warp中的线程统一编号时的线程编号，而initialMask只在当前warp中维护，因此重置时需要
+      //注意索引。
       initialMask.reset(i - warpId * m_warp_size);
     else
+      //如果第 i 个线程的状态不为空，则说明其为活跃线程，设置活跃线程数量增加1。
       liveThreadsCount++;
   }
-
+  //当前warp中，首个线程必须是活跃的。
   assert(m_thread[warpId * m_warp_size] != NULL);
+  //将该warp的起始PC值（用该warp的首个线程m_thread[warpId * m_warp_size]->get_pc()获取）线程和其线程掩码
+  //发送到SIMT堆栈。
   m_simt_stack[warpId]->launch(m_thread[warpId * m_warp_size]->get_pc(),
                                initialMask);
+
   char fname[2048];
   snprintf(fname, 2048, "checkpoint_files/warp_%d_0_simt.txt", warpId);
 
+  //在GPGPU-Sim的配置文件中，cp_cta_resume = -checkpoint_CTA_t一般不做配置，默认为0。
+  //下面的if块暂时用不到，以后用到再补充。
   if (m_gpu->gpgpu_ctx->func_sim->cp_cta_resume == 1) {
     unsigned pc, rpc;
     m_simt_stack[warpId]->resume(fname);
@@ -3489,12 +3520,17 @@ void functionalCoreSim::createWarp(unsigned warpId) {
       m_thread[i]->update_pc();
     }
   }
+  //设置活跃线程数量全局变量。
   m_liveThreadCount[warpId] = liveThreadsCount;
 }
 
 void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp) {
+  //在GPGPU-Sim的配置文件中，-checkpoint_insn_Y一般不做配置，默认为0，后续用到再补充。
   m_gpu->gpgpu_ctx->func_sim->cp_count = m_gpu->checkpoint_insn_Y;
+  //在GPGPU-Sim的配置文件中，-checkpoint_CTA_t一般不做配置，默认为0，后续用到再补充。
   m_gpu->gpgpu_ctx->func_sim->cp_cta_resume = m_gpu->checkpoint_CTA_t;
+
+  // =================================================================================================== HERE
   initializeCTA(ctaid_cp);
 
   int count = 0;
@@ -3506,6 +3542,10 @@ void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp) {
       count++;
     }
 
+    //在GPGPU-Sim的配置文件中，-checkpoint_option一般不做配置，默认为0，后续用到再补充。
+    //在GPGPU-Sim的配置文件中，-checkpoint_kernel一般不做配置，默认为1，后续用到再补充。
+    //在GPGPU-Sim的配置文件中，-checkpoint_CTA_t一般不做配置，默认为0，后续用到再补充。
+    //下面的if块暂时用不到，以后用到再补充。
     if (inst_count > 0 && count > inst_count &&
         (m_kernel->get_uid() == m_gpu->checkpoint_kernel) &&
         (ctaid_cp >= m_gpu->checkpoint_CTA) &&
@@ -3526,6 +3566,10 @@ void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp) {
   regval.u64 = 123;
 
   unsigned ctaid = m_kernel->get_next_cta_id_single();
+
+  //在GPGPU-Sim的配置文件中，-checkpoint_option一般不做配置，默认为0，后续用到再补充。
+  //在GPGPU-Sim的配置文件中，-checkpoint_kernel一般不做配置，默认为1，后续用到再补充。
+  //下面的if块暂时用不到，以后用到再补充。
   if (m_gpu->checkpoint_option == 1 &&
       (m_kernel->get_uid() == m_gpu->checkpoint_kernel) &&
       (ctaid_cp >= m_gpu->checkpoint_CTA) &&

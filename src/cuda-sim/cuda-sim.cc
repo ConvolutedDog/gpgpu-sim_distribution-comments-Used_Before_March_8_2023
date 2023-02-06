@@ -2729,6 +2729,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
   //根据给定的内核信息kernel，获取该内核中的活跃线程。
   std::list<ptx_thread_info *> &active_threads = kernel.active_threads();
   
+  //内存空间是由下列查找表来管理的。
   static std::map<unsigned, memory_space *> shared_memory_lookup;
   static std::map<unsigned, memory_space *> sstarr_memory_lookup;
   static std::map<unsigned, ptx_cta_info *> ptx_cta_lookup;
@@ -2762,6 +2763,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
     ptx_thread_info *thd = active_threads.front();
     active_threads.pop_front();
     *thread_info = thd;
+    //初始化线程。
     thd->init(gpu, core, sid, hw_cta_id, hw_warp_id, tid,
               isInFunctionalSimulationMode);
     return 1;

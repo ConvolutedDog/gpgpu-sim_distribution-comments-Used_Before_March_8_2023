@@ -251,13 +251,23 @@ class kernel_info_t {
     m_next_tid.z = 0;
   }
   dim3 get_next_cta_id() const { return m_next_cta; }
+  /*
+  获取下一个要发射的CTA的ID。CTA的全局ID与CUDA编程模型中的线程块索引类似，其ID算法如下：
+  ID = m_next_cta.x + m_grid_dim.x * m_next_cta.y +
+       m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
+  */
   unsigned get_next_cta_id_single() const {
     return m_next_cta.x + m_grid_dim.x * m_next_cta.y +
            m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
   }
   /* 
-  m_next_cta是用于标识下一个要执行的CTA（Compute Thread Array）的变量，它的值是一个全局ID，属于
-  dim3类型，具有.x/.y/.z三个分值。
+  m_next_cta是用于标识下一个要发射的CTA（Compute Thread Array）的变量，它的值是一个全局ID，属于
+  dim3类型，具有.x/.y/.z三个分值。GPU硬件配置的CTA的全局ID的范围为：
+      m_next_cta.x < m_grid_dim.x &&
+      m_next_cta.y < m_grid_dim.y &&
+      m_next_cta.z < m_grid_dim.z
+  因此如果标识下一个要发射的CTA的全局ID的任意一维超过对应范围，就代表硬件上已经没有CTA可用，这些CTA
+  全部在执行过程中。
   */
   bool no_more_ctas_to_run() const {
     return (m_next_cta.x >= m_grid_dim.x || m_next_cta.y >= m_grid_dim.y ||

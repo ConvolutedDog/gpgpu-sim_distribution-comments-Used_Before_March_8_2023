@@ -1247,7 +1247,15 @@ class param_info {
 
 /*
 单独的PTX指令在PTX函数中找到，这些函数要么是内核入口点，要么是可以在GPU上调用的子程序。每个PTX函数都有
-一个 function_info 对象：
+一个 function_info 对象，例如下述 .ptx 文件中：
+    .visible .entry _Z6MatMulPiS_S_i(
+      .param .u64 _Z6MatMulPiS_S_i_param_0,
+      .param .u64 _Z6MatMulPiS_S_i_param_1,
+      .param .u64 _Z6MatMulPiS_S_i_param_2,
+      .param .u32 _Z6MatMulPiS_S_i_param_3
+      )
+    {...}
+function_info 对象：
     1. function_info 包含一个可以进行功能模拟的静态PTX指令（ptx_instruction）列表。
     2. 对于内核入口点，将每个内核参数存储在一个映射 m_ptx_kernel_param_info 中；但是，对于OpenCL应用
     程序来说，这可能并不总是这样的。在OpenCL中，相关的常量内存空间可以通过两种方式分配。它可以在声明它

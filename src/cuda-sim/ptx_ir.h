@@ -1245,8 +1245,20 @@ class param_info {
   memory_space_t m_ptr_space;
 };
 
+/*
+单独的PTX指令在PTX函数中找到，这些函数要么是内核入口点，要么是可以在GPU上调用的子程序。每个PTX函数都有
+一个 function_info 对象：
+    1. function_info 包含一个可以进行功能模拟的静态PTX指令（ptx_instruction）列表。
+    2. 对于内核入口点，将每个内核参数存储在一个映射 m_ptx_kernel_param_info 中；但是，对于OpenCL应用
+    程序来说，这可能并不总是这样的。在OpenCL中，相关的常量内存空间可以通过两种方式分配。它可以在声明它
+    的ptx文件中显式初始化，或者使用主机上的clCreateBuffer来分配它。在后面这种情况下，.ptx文件将包含一
+    个参数的全局声明，但它将有一个未知的数组大小。因此，该符号的地址将不会被设置，需要在执行PTX之前在
+    function_info::add_param_data(...) 函数中设置。在这种情况下，内核参数的地址被存储在function_info
+    对象中的一个符号表中。
+*/
 class function_info {
  public:
+  //构造函数
   function_info(int entry_point, gpgpu_context *ctx);
   const ptx_version &get_ptx_version() const {
     return m_symtab->get_ptx_version();

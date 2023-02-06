@@ -2813,7 +2813,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
   unsigned sm_idx =
       hw_cta_id * gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders + sid;
 
-  //printf("==<gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders>=%d, <hw_cta_id>=%d, <sid>=%d\n", 
+  //printf("<gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders>=%d,<hw_cta_id>=%d,<sid>=%d\n", 
   //        gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders, hw_cta_id, sid);
 
   if (shared_memory_lookup.find(sm_idx) == shared_memory_lookup.end()) {
@@ -3149,34 +3149,77 @@ void cuda_sim::read_sim_environment_variables() {
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+/*
+一个Core上可同时调度的最大线程块（或CTA或Warp Group）的数量由函数 max_cta(...) 计算。这个函数根据
+程序指定的每个线程块的数量、每个线程寄存器的使用情况、共享内存的使用情况以及配置的每个Core最大线程块
+数量的限制，确定可以并发分配给单个SIMT Core的最大线程块数量。具体来说，如果上述每个标准都是限制因素，
+那么可以分配给SIMT Core的线程块的数量被计算出来。其中的最小值就是可以分配给SIMT Core的最大线程块数。
+函数的调用为：
+    unsigned max_cta_tot = max_cta(
+      kernel_info, 
+      kernel.threads_per_cta(),
+      gpgpu_ctx->the_gpgpusim->g_the_gpu->getShaderCoreConfig()->warp_size,
+      gpgpu_ctx->the_gpgpusim->g_the_gpu->getShaderCoreConfig()->n_thread_per_shader,
+      gpgpu_ctx->the_gpgpusim->g_the_gpu->getShaderCoreConfig()->gpgpu_shmem_size,
+      gpgpu_ctx->the_gpgpusim->g_the_gpu->getShaderCoreConfig()->gpgpu_shader_registers,
+      gpgpu_ctx->the_gpgpusim->g_the_gpu->getShaderCoreConfig()->max_cta_per_core);
+
+该函数的参数为：
+    1.const struct gpgpu_ptx_sim_info *kernel_info：内核信息，kernel_info_t对象包含GPU网格和线
+      程块的尺寸，与内核入口点相关的function_info对象，以及在参数内存中为内核参数分配的内存。
+    2.unsigned threads_per_cta：据内核函数的信息kernel获取其参数中的每个CTA（线程块）中的线程数。
+    3.unsigned int warp_size：一个warp中有多少线程。
+    4.unsigned int n_thread_per_shader：每个Shader Core的线程数。
+    5.unsigned int gpgpu_shmem_size：由GPU配置中的-gpgpu_shmem_size设置，单个Shader Core上的共
+      享存储的大小（以字节为单位），V100 GPU有96KB共享存储。
+    6.unsigned int gpgpu_shader_registers：由GPU配置中的-gpgpu_shader_registers设置，单个Shader
+      Core中的寄存器个数，在V100 GPU中一个Shader Core有65536个寄存器。
+    7.unsigned int max_cta_per_core：由GPU配置中的-gpgpu_shader_cta设置，Shader Core中并发CTA的
+      最大数量，V100 GPU每个Shader Core有32个CTA，
+*/
 unsigned max_cta(const struct gpgpu_ptx_sim_info *kernel_info,
                  unsigned threads_per_cta, unsigned int warp_size,
                  unsigned int n_thread_per_shader,
                  unsigned int gpgpu_shmem_size,
                  unsigned int gpgpu_shader_registers,
                  unsigned int max_cta_per_core) {
+  //首先计算除以warp_size向上取整的CTA_size。
   unsigned int padded_cta_size = threads_per_cta;
   if (padded_cta_size % warp_size)
     padded_cta_size = ((padded_cta_size / warp_size) + 1) * (warp_size);
+  //依据CTA_size，计算理论上每个Shader Core上的并发CTA的个数，一定是可整除的。
   unsigned int result_thread = n_thread_per_shader / padded_cta_size;
 
+  //依据shared memory，计算理论上每个Shader Core上的并发CTA的个数。
   unsigned int result_shmem = (unsigned)-1;
   if (kernel_info->smem > 0)
+    //一个线程块占用一个单独的共享存储。
     result_shmem = gpgpu_shmem_size / kernel_info->smem;
+  
+  //依据寄存器个数，计算理论上每个Shader Core上的并发CTA的个数。
   unsigned int result_regs = (unsigned)-1;
   if (kernel_info->regs > 0)
     result_regs = gpgpu_shader_registers /
                   (padded_cta_size * ((kernel_info->regs + 3) & ~3));
   printf("padded cta size is %d and %d and %d", padded_cta_size,
          kernel_info->regs, ((kernel_info->regs + 3) & ~3));
+  
   // Limit by CTA
+  //理论上Shader Core中并发CTA的最大数量，在不受其他资源限制的情况下。
   unsigned int result_cta = max_cta_per_core;
 
+  //gs_min2 的定义：
+  //    #define gs_min2(a, b) (((a) < (b)) ? (a) : (b))
+  //即二者比较，选小数。后面代码即为，选择 result_cta/result_shmem/result_regs/result_thread 四者中
+  //的最小值。
   unsigned result = result_thread;
   result = gs_min2(result, result_shmem);
   result = gs_min2(result, result_regs);
   result = gs_min2(result, result_cta);
 
+  //输出到命令行，可依据此来判断导致CTA并发不够的原因，或者是受限于CUDA代码中设置的CTA_size，或许是受限
+  //于shared memory的大小，或许是受限于SM内寄存器的个数，或许是受限于硬件本身Shader Core中并发CTA的最
+  //大限制数量。
   printf("GPGPU-Sim uArch: CTA/core = %u, limited by:", result);
   if (result == result_thread) printf(" threads");
   if (result == result_shmem) printf(" shmem");
@@ -3214,13 +3257,17 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   checkpoint *g_checkpoint;
   g_checkpoint = new checkpoint();
 
+  //如果内核函数已经将PDOM（分支处理中的后支配者检测）检测完成，执行if块代码。
   if (kernel_func_info->is_pdom_set()) {
     printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n",
            kernel.name().c_str());
   } else {
+    //内核函数尚未将PDOM（分支处理中的后支配者检测）检测完成。
     printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n",
            kernel.name().c_str());
+    //执行PDOM检测。
     kernel_func_info->do_pdom();
+    //待上一步执行PDOM检测完成后，设置PDOM检测完成的标志pdom_done = true。
     kernel_func_info->set_pdom();
   }
 

@@ -2311,9 +2311,8 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
   int op_classification = 0;
   //获取下一条指令的PC值。
   addr_t pc = next_instr();
-  assert(pc ==
+  assert(pc ==      //确保时序模型和功能模型同步。
          inst.pc);  // make sure timing model and functional model are in sync
-  //确保时序模型和功能模型同步。
 
   //根据pc值获得当前执行的指令 ptx_instruction 对象 pI。
   const ptx_instruction *pI = m_func_info->get_instruction(pc);
@@ -2322,9 +2321,12 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
   set_npc(pc + pI->inst_size());
 
   try {
+    //这里RPC是指分歧线程的直接重新汇合点PC（reconvergence PC，RPC）。首先要清楚这一个RPC，因为
+    //刚刚获取指令。
     clearRPC();
     m_last_set_operand_value.u64 = 0;
 
+    //已经执行完毕。
     if (is_done()) {
       printf(
           "attempted to execute instruction on a thread that is already "
@@ -2332,6 +2334,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       assert(0);
     }
 
+    //DEBUG用，后续用到再补充。
     if (g_debug_execution >= 6 ||
         m_gpu->get_config().get_ptx_inst_debug_to_file()) {
       if ((m_gpu->gpgpu_ctx->func_sim->g_debug_thread_uid == 0) ||
@@ -2381,8 +2384,11 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
     
     //如果一条指令具有谓词寄存器。
     if (pI->has_pred()) {
+      //获取谓词寄存器，并将其放入 operand_info 对象 pred。
       const operand_info &pred = pI->get_pred();
+      //获取谓词寄存器的值。
       ptx_reg_t pred_value = get_operand_value(pred, pred, PRED_TYPE, this, 0);
+      //设置[skip]标志，以后续停用线程通道。
       if (pI->get_pred_mod() == -1) {
         skip = (pred_value.pred & 0x0001) ^
                pI->get_pred_neg();  // ptxplus inverts the zero flag
@@ -2390,20 +2396,36 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
         skip = !pred_lookup(pI->get_pred_mod(), pred_value.pred & 0x000F);
       }
     }
+    //获取操作码。
     int inst_opcode = pI->get_opcode();
 
     if (skip) {
       //在谓词测试之后，如果设置了[skip]跳过标志，则停用线程通道，否则执行该条指令。
       inst.set_not_active(lane_id);
-    } else {
+    } else { // 正常执行该线程通道。
       const ptx_instruction *pI_saved = pI;
       ptx_instruction *pJ = NULL;
+      //VOTE_OP：Vote across thread group.
+      //在Warp中的所有活动线程上执行源谓词的Reduction。目标谓词值在warp中的所有线程中都是相同的。
+      //Reduction模式包括：
+      //    .all：如果warp中所有活动线程的源谓词为True，则为True。对源谓词求反以计算.none。
+      //    .any：如果warp中某些活动线程的源谓词为True，则为True。对源谓词求反以计算.not_all。
+      //    .uni:如果源谓词在warp中的所有活动线程中具有相同的值，则为True。对源谓词求反也会计算.uni。
+      //vote.ballot.b32简单地将谓词从warp中的每个线程复制到目标寄存器 d 的相应位，其中每个位对应于线程
+      //的通道id。
+      //
+      //ACTIVEMASK_OP：Queries the active threads within a warp.
+      //activemask查询基于来自执行warp的活动线程，并使用32位整数掩码设置目标 d，其中掩码中的每个位对应于
+      //线程的laneid。目标 d 是32位目标寄存器。
+      //活动线程将为其在结果中的条目贡献 1，而已退出或非活动或断言的线程将为结果中的其条目贡献 0。
       if (pI->get_opcode() == VOTE_OP || pI->get_opcode() == ACTIVEMASK_OP) {
         pJ = new ptx_instruction(*pI);
+        //拷贝活跃掩码。
         *((warp_inst_t *)pJ) = inst;  // copy active mask information
         pI = pJ;
       }
 
+      //Tensor Core中的wmma相关指令：包括MMA，LOAD，STORE。
       if (((inst_opcode == MMA_OP || inst_opcode == MMA_LD_OP ||
             inst_opcode == MMA_ST_OP))) {
         if (inst.active_count() != MAX_WARP_SIZE) {

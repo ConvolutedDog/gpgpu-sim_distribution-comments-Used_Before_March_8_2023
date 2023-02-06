@@ -2493,12 +2493,15 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       pI = pI_saved;
 
       // Run exit instruction if exit option included
+      //执行exit指令。
       if (pI->is_exit()) exit_impl(pI, this);
     }
 
+    //获取GPU硬件的配置信息。
     const gpgpu_functional_sim_config &config = m_gpu->get_config();
 
     // Output instruction information to file and stdout
+    //输出指令信息。DEBUG用，后续再补充。
     if (config.get_ptx_inst_debug_to_file() != 0 &&
         (config.get_ptx_inst_debug_thread_uid() == 0 ||
          config.get_ptx_inst_debug_thread_uid() == get_uid())) {
@@ -2510,6 +2513,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       fflush(m_gpu->get_ptx_inst_debug_file());
     }
 
+    //DEBUG用，后续再补充。
     if (m_gpu->gpgpu_ctx->func_sim->ptx_debug_exec_dump_cond<5>(get_uid(),
                                                                 pc)) {
       dim3 ctaid = get_ctaid();
@@ -2784,7 +2788,8 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
   //根据内核函数的信息kernel获取其参数中的每个CTA（线程块）中的线程数。
   unsigned cta_size = kernel.threads_per_cta();
   //判断该内核函数的执行需要，每个SM最大的线程块数量，num_threads为总线程数，cta_size为每个CTA（线
-  //程块）中的线程数。这个参数其实没啥用，因为它是假设的硬件只有一个SM，后买这个参数也用不到。
+  //程块）中的线程数。max_cta_per_sm 这个参数其实没啥用，因为它是假设的硬件只有一个SM，后面这个参数
+  //也用不到。
   unsigned max_cta_per_sm = num_threads / cta_size;  // e.g., 256 / 48 = 5
   assert(max_cta_per_sm > 0);
 
@@ -2897,6 +2902,9 @@ size_t get_kernel_code_size(class function_info *entry) {
   return entry->get_function_size();
 }
 
+/*
+OPENCL用，后续需要再补充。
+*/
 kernel_info_t *cuda_sim::gpgpu_opencl_ptx_sim_init_grid(
     class function_info *entry, gpgpu_ptx_sim_arg_list_t args,
     struct dim3 gridDim, struct dim3 blockDim, gpgpu_t *gpu) {
@@ -2920,6 +2928,10 @@ kernel_info_t *cuda_sim::gpgpu_opencl_ptx_sim_init_grid(
 #include "../../version"
 #include "detailed_version"
 
+/*
+打印GPGPU-Sim内核函数输出文件的第一行信息：
+        *** GPGPU-Sim Simulator Version 4.0.0  [build gpgpu-sim_git-commit-2435b16585df2e23f867d605c9f150170b891768_modified_4.0] ***
+*/
 void print_splash() {
   static int splash_printed = 0;
   if (!splash_printed) {
@@ -3140,11 +3152,12 @@ unsigned max_cta(const struct gpgpu_ptx_sim_info *kernel_info,
 
   return result;
 }
-/*!
+
+/*
 This function simulates the CUDA code functionally, it takes a kernel_info_t
 parameter which holds the data for the CUDA kernel to be executed
 该函数在功能上模拟CUDA代码，它接受一个kernel_info_t参数，该参数保存要执行的CUDA内核的数据。
-!*/
+*/
 void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
                                             bool openCL) {
   printf(

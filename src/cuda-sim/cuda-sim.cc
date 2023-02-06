@@ -3395,7 +3395,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
 }
 
 /*
-
+执行CTA的初始化。
 */
 void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
   int ctaLiveThreads = 0;
@@ -3458,6 +3458,9 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
   for (int k = 0; k < m_warp_count; k++) createWarp(k);
 }
 
+/*
+创建warp。
+*/
 void functionalCoreSim::createWarp(unsigned warpId) {
   simt_mask_t initialMask;
   unsigned liveThreadsCount = 0;

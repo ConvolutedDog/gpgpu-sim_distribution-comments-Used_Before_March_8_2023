@@ -3271,6 +3271,9 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
     kernel_func_info->set_pdom();
   }
 
+  //获取一个Shader Core上可同时调度的最大线程块（或CTA或Warp Group）的数量，它或者是受限于CUDA代码中
+  //设置的CTA_size，或许是受限于shared memory的大小，或许是受限于SM内寄存器的个数，或许是受限于硬件本
+  //身Shader Core中并发CTA的最大限制数量。由 max_cta(...) 来计算。
   unsigned max_cta_tot = max_cta(
       kernel_info, kernel.threads_per_cta(),
       gpgpu_ctx->the_gpgpusim->g_the_gpu->getShaderCoreConfig()->warp_size,
@@ -3292,6 +3295,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
 
   // we excute the kernel one CTA (Block) at the time, as synchronization
   // functions work block wise
+  //我们一次执行内核的一个CTA（块），因为同步函数按块工作。
   while (!kernel.no_more_ctas_to_run()) {
     unsigned temp = kernel.get_next_cta_id_single();
 

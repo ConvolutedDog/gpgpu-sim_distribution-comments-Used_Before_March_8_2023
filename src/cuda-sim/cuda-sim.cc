@@ -3190,7 +3190,7 @@ unsigned max_cta(const struct gpgpu_ptx_sim_info *kernel_info,
 /*
 This function simulates the CUDA code functionally, it takes a kernel_info_t
 parameter which holds the data for the CUDA kernel to be executed
-该函数在功能上模拟CUDA代码，它接受一个kernel_info_t参数，该参数保存要执行的CUDA内核的数据。
+该函数在功能上模拟CUDA代码，它接受一个 kernel_info_t 参数，该参数保存要执行的CUDA内核的数据。
 */
 void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
                                             bool openCL) {

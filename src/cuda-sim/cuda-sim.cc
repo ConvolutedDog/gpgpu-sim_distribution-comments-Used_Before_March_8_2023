@@ -3291,33 +3291,48 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   int cp_kernel = gpgpu_ctx->the_gpgpusim->g_the_gpu->checkpoint_kernel;
   cp_count = gpgpu_ctx->the_gpgpusim->g_the_gpu->checkpoint_insn_Y;
   cp_cta_resume = gpgpu_ctx->the_gpgpusim->g_the_gpu->checkpoint_CTA_t;
+  //统计已经发射出的CTA总数。
   int cta_launched = 0;
 
   // we excute the kernel one CTA (Block) at the time, as synchronization
   // functions work block wise
   //我们一次执行内核的一个CTA（块），因为同步函数按块工作。
+  //no_more_ctas_to_run()在abstract_hardware_model.h中定义，其函数功能为：
+  //    判断是否GPU硬件上是否还有CTA可用。
+  //    如果标识下一个要发射的CTA的全局ID的任意一维，超过了GPU硬件配置的CTA的全局ID的范围，就代表硬件
+  //    上已经没有CTA可用，这些CTA全部在执行过程中。
   while (!kernel.no_more_ctas_to_run()) {
+    //获取下一个要发射的CTA的ID。其ID算法如下：
+    //    ID = m_next_cta.x + m_grid_dim.x * m_next_cta.y +
+    //         m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
     unsigned temp = kernel.get_next_cta_id_single();
-
+    //判断是否CTA满足执行条件。
     if (cp_op == 0 ||
         (cp_op == 1 && cta_launched < cp_cta_resume &&
          kernel.get_uid() == cp_kernel) ||
-        kernel.get_uid() < cp_kernel)  // just fro testing
+        kernel.get_uid() < cp_kernel)  // just for testing
     {
+      //functionalCoreSim 类在功能上执行内核函数。它使用core_t中的基本数据结构和过程。
       functionalCoreSim cta(
           &kernel, gpgpu_ctx->the_gpgpusim->g_the_gpu,
           gpgpu_ctx->the_gpgpusim->g_the_gpu->getShaderCoreConfig()->warp_size);
+      //CTA执行。
       cta.execute(cp_count, temp);
 
 #if (CUDART_VERSION >= 5000)
       gpgpu_ctx->device_runtime->launch_all_device_kernels();
 #endif
     } else {
+      //CTA不满足执行条件，则由于temp标识的CTA已经在执行了，因此需要选择下一个CTA，通过指定下一个CTA
+      //的编号增加来实现，但是要考虑m_grid_dim的三维结构，超过其边界时，置零并增加下一维。
       kernel.increment_cta_id();
     }
+
+    //已经发射出的CTA总数增加。
     cta_launched++;
   }
 
+  //创造检查点，保存当前存储的状态。
   if (cp_op == 1) {
     char f1name[2048];
     snprintf(f1name, 2048, "checkpoint_files/global_mem_%d.txt",
@@ -3328,9 +3343,11 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   }
 
   // registering this kernel as done
+  //将此内核注册为已完成。
 
   // openCL kernel simulation calls don't register the kernel so we don't
   // register its exit
+  //OpenCL内核模拟调用不会注册内核，因此我们不会注册它的退出。
   if (!openCL) {
     // extern stream_manager *g_stream_manager;
     gpgpu_ctx->the_gpgpusim->g_stream_manager->register_finished_kernel(
@@ -3340,6 +3357,8 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   //******PRINTING*******
   printf("GPGPU-Sim: Done functional simulation (%u instructions simulated).\n",
          g_ptx_sim_num_insn);
+  
+  //在配置文件中，"-gpgpu_ptx_instruction_classification"默认设置为0，后面用到再补充。
   if (gpgpu_ptx_instruction_classification) {
     StatDisp(g_inst_classification_stat[g_ptx_kernel_count]);
     StatDisp(g_inst_op_classification_stat[g_ptx_kernel_count]);
@@ -3349,6 +3368,9 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   // the start time of simulation is hold by the global variable
   // g_simulation_starttime g_simulation_starttime is initilized by
   // gpgpu_ptx_sim_init_perf() in gpgpusim_entrypoint.cc upon starting gpgpu-sim
+  //下面是用于计算总模拟时间的 time_t 变量：
+  //模拟的开始时间由全局变量 g_simulation_starttime 保持；启动模拟时，gpgpusim_entrypoint.cc 中的
+  //gpgpu_ptx_sim_init_perf() 初始化 g_simulation_starttime。
   time_t end_time, elapsed_time, days, hrs, minutes, sec;
   end_time = time((time_t *)NULL);
   elapsed_time =
@@ -3356,6 +3378,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
 
   // calculating and printing simulation time in terms of days, hours, minutes
   // and seconds
+  //以天、小时、分钟和秒为单位计算和打印模拟时间。
   days = elapsed_time / (3600 * 24);
   hrs = elapsed_time / 3600 - 24 * days;
   minutes = elapsed_time / 60 - 60 * (hrs + 24 * days);

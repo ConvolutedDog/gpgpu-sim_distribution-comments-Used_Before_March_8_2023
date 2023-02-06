@@ -59,10 +59,11 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
 const struct gpgpu_ptx_sim_info *ptx_sim_kernel_info(
     const class function_info *kernel);
 
-/*!
- * This class functionally executes a kernel. It uses the basic data structures
- * and procedures in core_t
- */
+/*
+This class functionally executes a kernel. It uses the basic data structures
+and procedures in core_t.
+functionalCoreSim 类在功能上执行内核函数。它使用core_t中的基本数据结构和过程。
+*/
 class functionalCoreSim : public core_t {
  public:
   functionalCoreSim(kernel_info_t *kernel, gpgpu_sim *g, unsigned warp_size)

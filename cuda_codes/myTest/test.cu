@@ -23,7 +23,7 @@ __global__ void MatMul(int *M,int *N,int *P,int width)
  
 int main()
 {
-	const int ND = 30;
+	const int ND = 40;
 	int a[ND][ND],b[ND][ND],c[ND][ND];
 	int *M,*N,*P;
 	

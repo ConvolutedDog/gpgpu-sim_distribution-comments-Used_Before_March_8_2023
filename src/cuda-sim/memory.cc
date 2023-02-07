@@ -64,11 +64,17 @@ memory_space_impl<BSIZE>::memory_space_impl(std::string name,
 }
 
 /*
-
+仅仅只在存储里写入内容，不更新相关的状态。四个参数分别为：
+1. mem_addr_t offset：写地址范围的起始地址相对m_data的偏移量。
+2. mem_addr_t index：mem_storage<BSIZE> 对象（内存页）的索引。
+3. size_t length：写的内容的长度，以字节为单位。
+4. const unsigned char *data：写的数据内容。
 */
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::write_only(mem_addr_t offset, mem_addr_t index,
                                           size_t length, const void *data) {
+  //第 index 号内存页写入数据。m_data[index] 是一个mem_storage<BSIZE> 对象（内存页），
+  //调用它的成员函数来实现对其内存页的写入数据。
   m_data[index].write(offset, length, (const unsigned char *)data);
 }
 

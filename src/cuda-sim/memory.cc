@@ -86,7 +86,15 @@ void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
                                      const void *data,
                                      class ptx_thread_info *thd,
                                      const ptx_instruction *pI) {
+  //第 index 号内存页写入数据。m_data[index] 是一个mem_storage<BSIZE> 对象（内存页），调用它的
+  //成员函数来实现对其内存页的写入数据。这里来看是：
+  //    当 addr∈[0, 2^m_log2_block_size)时，index=0；
+  //    当 addr∈[2^m_log2_block_size, 2^(m_log2_block_sizes+1))时，index=1；
+  //    ......以此类推
+  //即，每个内存页只存储 BSIZE 字节大小的数据，超过就要换内存页。
   mem_addr_t index = addr >> m_log2_block_size;
+  //printf("addr:%x, m_log2_block_size=%d, index=%x, BSIZE=%d\n", 
+  //        addr, m_log2_block_size, index,BSIZE);
 
   if ((addr + length) <= (index + 1) * BSIZE) {
     // fast route for intra-block access

@@ -239,10 +239,16 @@ bool symbol_table::add_function_decl(const char *name, int entry_point,
     // it to the micro-architectural register to the performance simulator.
     // For this purpose we add a symbol to the symbol table but
     // mark it as a non_arch_reg so it does not effect the performance sim.
+    //用于支持表示为"_"的寄存器的初始设置代码。当未读取或写入指令操作数时，使用此寄存器。然而，解析器
+    //必须将其识别为合法的寄存器，但我们不想将其传递给微体系结构寄存器，传递给性能模拟器。为此，我们向
+    //符号表中添加一个符号，但将其标记为non_arch_reg，这样不会影响性能模拟。
+    //将带有"_"寄存器的指令中的"_"设置为null_key，并设置null_key.set_is_non_arch_reg()。
     type_info_key null_key(reg_space, 0, 0, 0, 0, 0);
     null_key.set_is_non_arch_reg();
     // First param is null - which is bad.
     // However, the first parameter is actually unread in the constructor...
+    //第一个参数为空-这是错误的。然而，第一个参数实际上在构造函数中没有读。
+
     // TODO - remove the symbol_table* from type_info
     type_info *null_type_info = new type_info(NULL, null_key);
     symbol *null_reg =

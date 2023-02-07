@@ -3411,12 +3411,13 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
   int ctaLiveThreads = 0;
   symbol_table *symtab = m_kernel->entry()->get_symtab();
 
+  //m_warp_count是一个CTA中的warp总数。
   for (int i = 0; i < m_warp_count; i++) {
     m_warpAtBarrier[i] = false;
     m_liveThreadCount[i] = 0;
   }
 
-  //将所有的线程置空，以后续执行初始化。
+  //将所有的线程置空，以后续执行初始化。m_warp_count是一个CTA中的warp总数。
   for (int i = 0; i < m_warp_count * m_warp_size; i++) m_thread[i] = NULL;
 
   // get threads for a cta
@@ -3466,7 +3467,7 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
       m_thread[i]->resume_reg_thread(fname, symtab);
     ctaLiveThreads++;
   }
-  //创建warp。
+  //创建warp。m_warp_count是一个CTA中的warp总数。
   for (int k = 0; k < m_warp_count; k++) createWarp(k);
 }
 
@@ -3474,11 +3475,12 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp) {
 创建warp。
 */
 void functionalCoreSim::createWarp(unsigned warpId) {
-  //初始化标识warp内线程通道是否执行的掩码，处理线程分支。simt_mask_t在abstract_hardware_model.h中定义：
+  //初始化标识warp内线程通道是否执行的掩码，处理线程分支。simt_mask_t在abstract_hardware_model.h中
+  //定义：
   //    typedef std::bitset<MAX_WARP_SIZE_SIMT_STACK> simt_mask_t;
-  //它的类型为std::bitset，bitset是用来储存诸多bit，这些元素可以用来表示两种状态：0或1，true或false。可以很
-  //方便的用该容器快速实现状态储存。simt_mask_t的大小为 MAX_WARP_SIZE_SIMT_STACK，即一个SIMT堆栈的最大的
-  //warp（一个SIMT堆栈控制的所有的warp中的线程数量最多的warp）的线程数量（一般为32）。
+  //它的类型为std::bitset，bitset是用来储存诸多bit，这些元素可以用来表示两种状态：0或1，true或false。
+  //可以很方便的用该容器快速实现状态储存。simt_mask_t的大小为 MAX_WARP_SIZE_SIMT_STACK，即一个SIMT
+  //堆栈的最大的warp（一个SIMT堆栈控制的所有的warp中的线程数量最多的warp）的线程数量（一般为32）。
   simt_mask_t initialMask;
   //统计活跃线程数量。
   unsigned liveThreadsCount = 0;
@@ -3487,12 +3489,12 @@ void functionalCoreSim::createWarp(unsigned warpId) {
   //对当前warp内的所有线程循环，warpID为当前warp的编号，m_warp_size指一个warp内有多少个线程。
   for (int i = warpId * m_warp_size; i < warpId * m_warp_size + m_warp_size;
        i++) {
-    //m_thread 成员变量是SIMT Core类 shader_core_ctx 中 ptx_thread_info 的数组，维护该SIMT Core中所有
-    //活动线程的功能状态。如果 m_thread[i] == NULL 即第 i 个线程的状态为空，则需要将 initialMask 的对应位
-    //置零。
+    //m_thread 成员变量是SIMT Core类 shader_core_ctx 中 ptx_thread_info 的数组，维护该SIMT Core中
+    //所有活动线程的功能状态。如果 m_thread[i] == NULL 即第 i 个线程的状态为空，则需要将 initialMask 
+    //的对应位置零。
     if (m_thread[i] == NULL)
-      //注意，这里 i 是所有warp中的线程统一编号时的线程编号，而initialMask只在当前warp中维护，因此重置时需要
-      //注意索引。
+      //注意，这里 i 是所有warp中的线程统一编号时的线程编号，而initialMask只在当前warp中维护，因此重
+      //置时需要注意索引。
       initialMask.reset(i - warpId * m_warp_size);
     else
       //如果第 i 个线程的状态不为空，则说明其为活跃线程，设置活跃线程数量增加1。
@@ -3500,8 +3502,8 @@ void functionalCoreSim::createWarp(unsigned warpId) {
   }
   //当前warp中，首个线程必须是活跃的。
   assert(m_thread[warpId * m_warp_size] != NULL);
-  //将该warp的起始PC值（用该warp的首个线程m_thread[warpId * m_warp_size]->get_pc()获取）线程和其线程掩码
-  //发送到SIMT堆栈。
+  //将该warp的起始PC值（用该warp的首个线程m_thread[warpId * m_warp_size]->get_pc()获取）线程和其线
+  //程掩码发送到SIMT堆栈。
   m_simt_stack[warpId]->launch(m_thread[warpId * m_warp_size]->get_pc(),
                                initialMask);
 
@@ -3524,20 +3526,34 @@ void functionalCoreSim::createWarp(unsigned warpId) {
   m_liveThreadCount[warpId] = liveThreadsCount;
 }
 
+/*
+执行一个CTA。
+functionalCoreSim::execute函数在gpgpu_cuda_ptx_sim_main_func主函数中的调用为：
+    cta.execute(cp_count, temp); temp为下一个要发出的CTA的ID。cp_count=0。
+即ctaid_cp为下一个要发射的CTA的ID。其ID算法如下：
+    ID = m_next_cta.x + m_grid_dim.x * m_next_cta.y +
+         m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
+*/
 void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp) {
   //在GPGPU-Sim的配置文件中，-checkpoint_insn_Y一般不做配置，默认为0，后续用到再补充。
   m_gpu->gpgpu_ctx->func_sim->cp_count = m_gpu->checkpoint_insn_Y;
   //在GPGPU-Sim的配置文件中，-checkpoint_CTA_t一般不做配置，默认为0，后续用到再补充。
   m_gpu->gpgpu_ctx->func_sim->cp_cta_resume = m_gpu->checkpoint_CTA_t;
 
-  // =================================================================================================== HERE
+  //functionalCoreSim::execute函数在gpgpu_cuda_ptx_sim_main_func主函数中的调用为：
+  //    cta.execute(cp_count, temp); temp为下一个要发出的CTA的ID。cp_count=0。
+  //即ctaid_cp为下一个要发射的CTA的ID。其ID算法如下：
+  //    ID = m_next_cta.x + m_grid_dim.x * m_next_cta.y +
+  //         m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
   initializeCTA(ctaid_cp);
 
   int count = 0;
   while (true) {
     bool someOneLive = false;
     bool allAtBarrier = true;
+    //m_warp_count是一个CTA中的warp总数。即下面的i相当于当前CTA内的warp ID。
     for (unsigned i = 0; i < m_warp_count; i++) {
+      //执行当前CTA内的第i个warp。
       executeWarp(i, allAtBarrier, someOneLive);
       count++;
     }
@@ -3553,6 +3569,7 @@ void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp) {
       someOneLive = false;
       break;
     }
+    //m_warp_count是一个CTA中的warp总数。即下面的i相当于当前CTA内的warp ID。
     if (!someOneLive) break;
     if (allAtBarrier) {
       for (unsigned i = 0; i < m_warp_count; i++) m_warpAtBarrier[i] = false;
@@ -3605,17 +3622,39 @@ void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp) {
   }
 }
 
+/*
+执行一个warp。
+functionalCoreSim::executeWarp函数在functionalCoreSim::execute中的调用为：
+    executeWarp(i, allAtBarrier, someOneLive);
+其中，i是一个CTA内的warp的编号，即warp ID，一个CTA内的warp从0开始编号。
+allAtBarrier初始设置为True，即初始状态默认“不是所有的warp都处于屏障指令状态”。
+someOneLive初始设置为False，即初始状态默认“所有的warp都暂时没有活跃的指令”。
+*/
 void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier,
                                     bool &someOneLive) {
+  //m_warpAtBarrier和m_liveThreadCount在cuda-sim.h中定义：
+  //    每个warp活跃线程数
+  //    unsigned *m_liveThreadCount;
+  //    warp屏障指示器
+  //    bool *m_warpAtBarrier;
+  //第i个warp不处于屏障状态，且第i个warp内的活跃线程数不为0，需要执行该warp。
   if (!m_warpAtBarrier[i] && m_liveThreadCount[i] != 0) {
+    //获取当前CTA内第i个warp的指令。
     warp_inst_t inst = getExecuteWarp(i);
+    //执行该条指令。
     execute_warp_inst_t(inst, i);
+    //判断是否是原子操作。
     if (inst.isatomic()) inst.do_atomic(true);
+    //判断是否指令是屏障指令，并相应地设置对应此warp的屏障指示器。
     if (inst.op == BARRIER_OP || inst.op == MEMORY_BARRIER_OP)
       m_warpAtBarrier[i] = true;
+    //更新SIMT堆栈。
     updateSIMTStack(i, &inst);
   }
+  //如果该条warp的活跃线程数大于0，则设置someOneLive = true。因为一旦有一个warp的活跃线程数大于0，则
+  //指示有某个warp处于活跃状态，就需要设置someOneLive = true。
   if (m_liveThreadCount[i] > 0) someOneLive = true;
+  //如果该条线程的活跃线程数大于0，且不处于屏障指令，设置allAtBarrier = false。
   if (!m_warpAtBarrier[i] && m_liveThreadCount[i] > 0) allAtBarrier = false;
 }
 
@@ -3793,9 +3832,13 @@ address_type cuda_sim::get_converge_point(address_type pc) {
   return NO_BRANCH_DIVERGENCE;
 }
 
+/*
+退出执行所有的warp。m_warp_count是一个CTA中的warp总数。m_warp_size是一个warp内有多少线程。
+*/
 void functionalCoreSim::warp_exit(unsigned warp_id) {
   for (int i = 0; i < m_warp_count * m_warp_size; i++) {
     if (m_thread[i] != NULL) {
+      //挂起所有线程。
       m_thread[i]->m_cta_info->register_deleted_thread(m_thread[i]);
       delete m_thread[i];
     }

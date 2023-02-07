@@ -175,7 +175,7 @@ class memory_space_impl : public memory_space {
   typedef mem_map<mem_addr_t, mem_storage<BSIZE> > map_t;
   //在 memory_space_impl 对象中的 m_data 与 mem_storage 对象不同，前者是作为一个 std::unordered_map，
   //其 key-value 对分别为：
-  //    key: mem_addr_t 类型的无符号地址；
+  //    key: mem_addr_t 类型的 blk_idx（内存页编号）；
   //    value: mem_storage<BSIZE> 内存页。
   map_t m_data;
   //观察点，DEBUG用，后面用到再补充。

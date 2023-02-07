@@ -79,7 +79,12 @@ void memory_space_impl<BSIZE>::write_only(mem_addr_t offset, mem_addr_t index,
 }
 
 /*
-
+在存储里写入内容，并更新相关的状态。四个参数分别为：
+1. mem_addr_t addr：写地址范围的起始地址。
+2. size_t length：写的内容的长度，以字节为单位。
+3. const unsigned char *data：写的数据内容。
+4. class ptx_thread_info *thd：
+5. const ptx_instruction *pI
 */
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
@@ -87,22 +92,37 @@ void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
                                      class ptx_thread_info *thd,
                                      const ptx_instruction *pI) {
   //第 index 号内存页写入数据。m_data[index] 是一个mem_storage<BSIZE> 对象（内存页），调用它的
-  //成员函数来实现对其内存页的写入数据。这里来看是：
+  //成员函数来实现对其内存页的写入数据。addr的编址是从第 0 个内存页开始的。这里来看是：
   //    当 addr∈[0, 2^m_log2_block_size)时，index=0；
   //    当 addr∈[2^m_log2_block_size, 2^(m_log2_block_sizes+1))时，index=1；
-  //    ......以此类推
+  //    ......以此类推。
   //即，每个内存页只存储 BSIZE 字节大小的数据，超过就要换内存页。
   mem_addr_t index = addr >> m_log2_block_size;
   //printf("addr:%x, m_log2_block_size=%d, index=%x, BSIZE=%d\n", 
   //        addr, m_log2_block_size, index,BSIZE);
 
+  //判断写数据的长度是否超过当前内存页。
   if ((addr + length) <= (index + 1) * BSIZE) {
     // fast route for intra-block access
+    //如果写数据的长度没有超过当前内存页，就可以执行块内访问的快速路由。
+    //offset指的是写地址范围的起始地址相对当前内存页的起始地址的偏移量。例如：
+    //    有一个存储器，它的每个内存页的大小为 BSIZE=16字节，则：
+    //        addr为  0~15 时，处于第 0 号内存页；
+    //        addr为 16~31 时，处于第 1 号内存页；
+    //    则，如果 addr=17，
+    //        addr & BSIZE = 'b10001 & ('b10000-'b1) = 'b10001 & 'b01111 = 'b1
+    //    即addr=17相对当前内存页的起始地址的偏移量为 1。
     unsigned offset = addr & (BSIZE - 1);
+    //写数据的长度。
     unsigned nbytes = length;
+    //第 index 号内存页写入数据。m_data[index] 是一个mem_storage<BSIZE> 对象（内存页），
+    //调用它的成员函数来实现对其内存页的写入数据。
     m_data[index].write(offset, nbytes, (const unsigned char *)data);
   } else {
     // slow route for inter-block access
+    //如果写数据的长度超过了当前内存页，就可以执行块间访问（跨内存页）的慢速路由。
+    //临时变量保存住[写数据的长度]/[相对当前内存页的起始地址的偏移量]/[写数据的全局地址]，后
+    //面根据在什么位置跨内存页再调整。
     unsigned nbytes_remain = length;
     unsigned src_offset = 0;
     mem_addr_t current_addr = addr;
@@ -126,6 +146,7 @@ void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
     }
     assert(nbytes_remain == 0);
   }
+
   if (!m_watchpoints.empty()) {
     std::map<unsigned, mem_addr_t>::iterator i;
     for (i = m_watchpoints.begin(); i != m_watchpoints.end(); i++) {

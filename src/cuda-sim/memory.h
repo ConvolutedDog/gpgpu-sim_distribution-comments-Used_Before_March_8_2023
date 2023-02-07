@@ -178,7 +178,6 @@ class memory_space_impl : public memory_space {
   //    key: mem_addr_t 类型的无符号地址；
   //    value: mem_storage<BSIZE> 内存页。
   map_t m_data;
-  
   std::map<unsigned, mem_addr_t> m_watchpoints;
 };
 

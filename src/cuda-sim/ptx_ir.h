@@ -69,7 +69,7 @@ class type_info_key {
   type_info_key(memory_space_t space_spec, int scalar_type_spec,
                 int vector_spec, int alignment_spec, int extern_spec,
                 int array_dim) {
-    //m_is_non_arch_reg 的意思详见 void set_is_non_arch_reg() 的注释。
+    //m_is_non_arch_reg 的意思详见 void set_is_non_arch_reg() 的注释。 
     m_is_non_arch_reg = false;
     m_init = true;
     m_space_spec = space_spec;

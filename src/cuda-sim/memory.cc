@@ -83,8 +83,8 @@ void memory_space_impl<BSIZE>::write_only(mem_addr_t offset, mem_addr_t index,
 1. mem_addr_t addr：写地址范围的起始地址。
 2. size_t length：写的内容的长度，以字节为单位。
 3. const unsigned char *data：写的数据内容。
-4. class ptx_thread_info *thd：
-5. const ptx_instruction *pI
+4. class ptx_thread_info *thd：DEBUG用，后面用到再补充。
+5. const ptx_instruction *pI：DEBUG用，后面用到再补充。
 */
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
@@ -177,12 +177,30 @@ void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
 }
 
 /*
-
+读单个内存页的数据。四个参数分别为：
+1. mem_addr_t blk_idx：读的数据所在的内存页编号。
+2. mem_addr_t addr：读地址范围的起始地址。
+3. size_t length：读的内容的长度，以字节为单位。
+4. void *data：读到的数据放到 data 中。
 */
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::read_single_block(mem_addr_t blk_idx,
                                                  mem_addr_t addr, size_t length,
                                                  void *data) const {
+  //看一个例子：
+  //    有一个存储器，它的每个内存页的大小为 BSIZE=16字节，则：
+  //        addr为  0~15 时，处于第 0 号内存页；
+  //        addr为 16~31 时，处于第 1 号内存页；
+  //        addr为 32~47 时，处于第 3 号内存页；则：
+  //    1. 如果 读地址 addr=17，读长度为 10，读的内存页号为 1：
+  //       读范围的终止地址=(addr + length)=27
+  //       读的内存页的最末尾地址=(blk_idx + 1) * BSIZE=32
+  //       27 <= 32，未跨页，合法。
+  //    2. 如果 读地址 addr=28，读长度为 10，读的内存页号为 1：
+  //       读范围的终止地址=(addr + length)=38
+  //       读的内存页的最末尾地址=(blk_idx + 1) * BSIZE=32
+  //       38 > 32，跨页，非法。
+  //下面的if判断即为判断读内存页是否合法。
   if ((addr + length) > (blk_idx + 1) * BSIZE) {
     printf(
         "GPGPU-Sim PTX: ERROR * access to memory \'%s\' is unaligned : "
@@ -194,19 +212,36 @@ void memory_space_impl<BSIZE>::read_single_block(mem_addr_t blk_idx,
         (addr + length), (blk_idx + 1) * BSIZE, blk_idx, BSIZE);
     throw 1;
   }
+  //在 memory_space_impl 对象中的 m_data 与 mem_storage 对象不同，前者是作为一个 
+  //std::unordered_map，其 key-value 对分别为：
+  //    key: mem_addr_t 类型的 blk_idx（内存页编号）；
+  //    value: mem_storage<BSIZE> 内存页。
+  //函数 unordered_map.find(key) 的功能：
+  //    参数：它以键（key）作为参数。
+  //    返回值：如果给定的键存在于unordered_map中，则它向该元素返回一个迭代器，否则
+  //           返回映射迭代器的末尾。
   typename map_t::const_iterator i = m_data.find(blk_idx);
+  //如果 i == m_data.end()，说明 m_data 不存在 blk_idx 标识的内存页。
   if (i == m_data.end()) {
+    //m_data 不存在 blk_idx 标识的内存页，将 data 全部置零。
     for (size_t n = 0; n < length; n++)
       ((unsigned char *)data)[n] = (unsigned char)0;
     // printf("GPGPU-Sim PTX:  WARNING reading %zu bytes from unititialized
     // memory at address 0x%x in space %s\n", length, addr, m_name.c_str() );
   } else {
+    //如果 i != m_data.end()，m_data 存在 blk_idx 标识的内存页，i是指向该内存页的
+    //迭代器。
+    //计算 addr 相对当前内存页的起始地址的偏移量。
     unsigned offset = addr & (BSIZE - 1);
     unsigned nbytes = length;
+    //读数据，读到的数据放入 data。
     i->second.read(offset, nbytes, (unsigned char *)data);
   }
 }
 
+/*
+
+*/
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::read(mem_addr_t addr, size_t length,
                                     void *data) const {

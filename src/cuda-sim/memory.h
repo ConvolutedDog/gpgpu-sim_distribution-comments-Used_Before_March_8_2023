@@ -50,10 +50,22 @@ typedef address_type mem_addr_t;
 
 #define MEM_BLOCK_SIZE (4 * 1024)
 
+/*
+内存页（由类模板 mem_storage 实现）。它使用STL无序Map（如果无序Map不可用，则恢复为STL Map）来将页
+与它们相应的地址联系起来。每个 mem_storage 对象是一个具有读写功能的字节数组。
+*/
 template <unsigned BSIZE>
 class mem_storage {
  public:
+  //mem_storage的构造函数，从另一个mem_storage对象another复制内存页。m_data是构造的内存页中的全部
+  //数据，这里calloc的函数原型和功能是：
+  //    extern void *calloc (size_t __nmemb, size_t __size)
+  //    分配存储的单个元素大小为SIZE字节，总共分配NMEMB个这种元素，并全部初始化为0。
+  //memcpy的函数原型和功能是：
+  //    extern void *memcpy (void *__restrict __dest, const void *__restrict __src, size_t __n)
+  //    从__src地址拷贝到__dst地址，共__n字节的数据。
   mem_storage(const mem_storage &another) {
+    //分配1个大小为BSIZE大小的内存页，并全部初始化为0。
     m_data = (unsigned char *)calloc(1, BSIZE);
     memcpy(m_data, another.m_data, BSIZE);
   }

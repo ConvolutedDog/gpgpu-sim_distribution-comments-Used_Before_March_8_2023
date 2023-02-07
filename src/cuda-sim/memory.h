@@ -59,29 +59,45 @@ class mem_storage {
  public:
   //mem_storage的构造函数，从另一个mem_storage对象another复制内存页。m_data是构造的内存页中的全部
   //数据，这里calloc的函数原型和功能是：
-  //    extern void *calloc (size_t __nmemb, size_t __size)
+  //    void *calloc (size_t __nmemb, size_t __size)
   //    分配存储的单个元素大小为SIZE字节，总共分配NMEMB个这种元素，并全部初始化为0。
   //memcpy的函数原型和功能是：
-  //    extern void *memcpy (void *__restrict __dest, const void *__restrict __src, size_t __n)
+  //    void *memcpy (void *__restrict __dest, const void *__restrict __src, size_t __n)
   //    从__src地址拷贝到__dst地址，共__n字节的数据。
   mem_storage(const mem_storage &another) {
     //分配1个大小为BSIZE大小的内存页，并全部初始化为0。
     m_data = (unsigned char *)calloc(1, BSIZE);
+    //把另一个mem_storage对象another的数据，复制到当前对象的m_data中，复制大小为BSIZE字节数。
     memcpy(m_data, another.m_data, BSIZE);
   }
+  //mem_storage的构造函数，直接为当前对象的m_data分配BSIZE字节的存储。
   mem_storage() { m_data = (unsigned char *)calloc(1, BSIZE); }
+  //析构函数，释放前对象的m_data。
   ~mem_storage() { free(m_data); }
 
+  //写存储，参数分别为：
+  //    1. unsigned offset：写地址范围的起始地址相对m_data的偏移量
+  //    2. size_t length：写的内容的长度，以字节为单位
+  //    3. const unsigned char *data：写的数据内容
   void write(unsigned offset, size_t length, const unsigned char *data) {
+    //由于当前对象的m_data总共BSIZE字节，写地址范围不能越界。
     assert(offset + length <= BSIZE);
+    //写内容。
     memcpy(m_data + offset, data, length);
   }
 
+  //读存储，参数分别为：
+  //    1. unsigned offset：读地址范围的起始地址相对m_data的偏移量
+  //    2. size_t length：读的内容的长度，以字节为单位
+  //    3. const unsigned char *data：读的数据内容
   void read(unsigned offset, size_t length, unsigned char *data) const {
+    //由于当前对象的m_data总共BSIZE字节，读地址范围不能越界。
     assert(offset + length <= BSIZE);
+    //读内容。
     memcpy(data, m_data + offset, length);
   }
 
+  //打印存储中的内容。
   void print(const char *format, FILE *fout) const {
     unsigned int *i_data = (unsigned int *)m_data;
     for (int d = 0; d < (BSIZE / sizeof(unsigned int)); d++) {
@@ -96,13 +112,23 @@ class mem_storage {
   }
 
  private:
+  //无效变量，没用到。
   unsigned m_nbytes;
+  //当前mem_storage类的对象的数据的指针，指向第一字节的数据。
   unsigned char *m_data;
 };
 
 class ptx_thread_info;
 class ptx_instruction;
 
+/*
+memory_space是用于实现功能模拟状态的内存存储的抽象基类。在函数仿真中使用的动态数据值的存储使用了不同
+的寄存器和内存空间类。寄存器的值包含在 ptx_thread_info::m_regs 中，这是一个从符号指针到C联合类型 
+ptx_reg_t 的映射。寄存器的访问使用方法 ptx_thread_info::get_operand_value()，它使用 operand_info 
+作为输入。对于内存操作数，该方法返回内存操作数的有效地址。编程模型中的每个内存空间都包含在一个类型为 
+memory_space 的对象中。GPU中所有线程可见的内存空间都包含在 gpgpu_t 中，并通过 ptx_thread_info 中的
+接口进行访问（例如，ptx_thread_info::get_global_memory）。
+*/
 class memory_space {
  public:
   virtual ~memory_space() {}

@@ -3265,7 +3265,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
     //内核函数尚未将PDOM（分支处理中的后支配者检测）检测完成。
     printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n",
            kernel.name().c_str());
-    //执行PDOM检测。
+    //执行PDOM检测。 
     kernel_func_info->do_pdom();
     //待上一步执行PDOM检测完成后，设置PDOM检测完成的标志pdom_done = true。
     kernel_func_info->set_pdom();

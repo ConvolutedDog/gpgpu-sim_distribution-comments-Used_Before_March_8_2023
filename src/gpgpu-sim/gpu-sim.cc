@@ -337,11 +337,14 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   option_parser_register(
       opp, "-gpgpu_clock_gated_lanes", OPT_BOOL, &gpgpu_clock_gated_lanes,
       "enable clock gated lanes for power calculations", "0");
+  //每个Shader Core的寄存器数。并发CTA的限制数量。
+  //-gpgpu_shader_registers <# registers/shader core, default=8192>
   option_parser_register(opp, "-gpgpu_shader_registers", OPT_UINT32,
                          &gpgpu_shader_registers,
                          "Number of registers per shader core. Limits number "
                          "of concurrent CTAs. (default 8192)",
                          "8192");
+  //每个CTA的最大寄存器数（默认值8192）。
   option_parser_register(
       opp, "-gpgpu_registers_per_block", OPT_UINT32, &gpgpu_registers_per_block,
       "Maximum number of registers per CTA. (default 8192)", "8192");
@@ -366,9 +369,11 @@ void shader_core_config::reg_options(class OptionParser *opp) {
       opp, "-gpgpu_n_ldst_response_buffer_size", OPT_UINT32,
       &ldst_unit_response_queue_size,
       "number of response packets in ld/st unit ejection buffer", "2");
+  //每个线程块或CTA的共享内存大小（默认48KB）。
   option_parser_register(
       opp, "-gpgpu_shmem_per_block", OPT_UINT32, &gpgpu_shmem_per_block,
       "Size of shared memory per thread block or CTA (default 48kB)", "49152");
+  //每个SIMT Core（也称为Shader Core）的共享存储大小。
   option_parser_register(
       opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size,
       "Size of shared memory per shader core (default 16kB)", "16384");
@@ -610,7 +615,7 @@ void gpgpu_sim_config::reg_options(option_parser_t opp) {
   //在达到最大指令数后尽早终止GPU模拟(0 = no limit)。-gpgpu_max_insn <# insns>
   option_parser_register(opp, "-gpgpu_max_insn", OPT_INT64, &gpu_max_insn_opt,
                          "terminates gpu simulation early (0 = no limit)", "0");
-  //在达到最大CTA并发数后尽早终止GPU模拟(0 = no limit)。
+  //在达到最大CTA并发线程数后尽早终止GPU模拟(0 = no limit)。
   option_parser_register(opp, "-gpgpu_max_cta", OPT_INT32, &gpu_max_cta_opt,
                          "terminates gpu simulation early (0 = no limit)", "0");
   //在达到最大CTA完成数后尽早终止GPU模拟(0 = no limit)。
@@ -811,10 +816,10 @@ bool gpgpu_sim::can_start_kernel() {
 }
 
 /*
-gpu_max_cta_opt选项是指的是，GPGPU-Sim所能达到最大线程块数(0 = no limit)，在配置选项中定义。
+gpu_max_cta_opt选项是指的是，GPGPU-Sim所能达到最大CTA并发线程数(0 = no limit)，在配置选项中定义。
 gpu_tot_issued_cta即总发出的CTA（Compute Thread Array）亦即线程块数量，加上m_total_cta_launched
-即已经启动的CTA数量要大于或等于GPU的最大CTA数量（m_config.gpu_max_cta_opt），这是为了确保GPU的最大
-性能。
+即已经启动的CTA数量要大于或等于GPU的最大CTA并发线程数量（m_config.gpu_max_cta_opt），这是为了确保
+GPU的最大性能。
 */
 bool gpgpu_sim::hit_max_cta_count() const {
   if (m_config.gpu_max_cta_opt != 0) {
@@ -844,7 +849,7 @@ bool gpgpu_sim::kernel_more_cta_left(kernel_info_t *kernel) const {
 回是否有更多CTA可以执行的布尔值。如果已达到GPU最大的CTA数（由gpgpu_sim::hit_max_cta_count()判断），
 则没有剩余的CTA，返回False；如果某个m_running_kernels向量里的kernel非空，且kernel->
 no_more_ctas_to_run()为假即kernel自己还可有多余CTA执行，则返回True。
- */
+*/
 bool gpgpu_sim::get_more_cta_left() const {
   if (hit_max_cta_count()) return false;
 
@@ -927,7 +932,7 @@ kernel_info_t *gpgpu_sim::select_kernel() {
 }
 
 /*
-从已结束的内核队列中选择头部的内核并返回。
+从已结束的内核队列m_finished_kernel中选择头部的内核并返回。
 */
 unsigned gpgpu_sim::finished_kernel() {
   //m_finished_kernel.empty()为1表示当前暂时无已经结束的内核。
@@ -972,10 +977,10 @@ void gpgpu_sim::stop_all_running_kernels() {
 创建SIMT Cluster。
   1.m_shader_config：定义shader处理器的配置，包括每个shader处理器的指令宽度、数据宽度、指令缓存大小
     等；
-  2.m_memory_config：定义内存模块的配置，包括每个内存模块的读写带宽、latency等；
+  2.m_memory_config：定义存储模块的配置，包括每个存储模块的读写带宽、latency等；
   3.m_shader_stats：定义shader处理器的统计信息，包括每个shader处理器的指令执行次数、指令缓存命中次
     数等；
-  4.m_memory_stats：定义内存模块的统计信息，包括每个内存模块的读写次数、cache命中次数等；
+  4.m_memory_stats：定义存储模块的统计信息，包括每个存储模块的读写次数、cache命中次数等；
 */
 void exec_gpgpu_sim::createSIMTCluster() {
   //m_cluster在gpu-sim.h中定义：class simt_core_cluster **m_cluster;
@@ -987,6 +992,12 @@ void exec_gpgpu_sim::createSIMTCluster() {
                                    m_shader_stats, m_memory_stats);
 }
 
+/*
+性能仿真引擎是通过 <gpgpu-sim_root>/src/gpgpu-sim/ 下的文件中定义和实现的许多类来实现的。这些类通过
+顶层类 gpgpu_sim 汇集在一起，该类是由 gpgpu_t （其功能仿真对应部分）派生的。在当前版本的GPGPU-Sim中，
+模拟器中只有一个 gpgpu_sim 的实例 g_the_gpu。目前不支持同时对多个GPU进行仿真，但在未来的版本中可能会
+提供。
+*/
 gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
     : gpgpu_t(config, ctx), m_config(config) {
   //gpgpu_context *ctx在libcuda/gpgpu_context.h中定义。
@@ -1066,26 +1077,48 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
   m_functional_sim_kernel = NULL;
 }
 
+/*
+获取每个SIMT Core（也称为Shader Core）的共享存储大小。由GPGPU-Sim的-gpgpu_shmem_size选项配置。
+*/
 int gpgpu_sim::shared_mem_size() const {
   return m_shader_config->gpgpu_shmem_size;
 }
 
+/*
+获取每个线程块或CTA的共享内存大小（默认48KB）。由GPGPU-Sim的-gpgpu_shmem_per_block选项配置。
+*/
 int gpgpu_sim::shared_mem_per_block() const {
   return m_shader_config->gpgpu_shmem_per_block;
 }
 
+/*
+获取每个Shader Core的寄存器数。并发CTA的限制数量。由GPGPU-Sim的-gpgpu_shader_registers选项配置。
+*/
 int gpgpu_sim::num_registers_per_core() const {
   return m_shader_config->gpgpu_shader_registers;
 }
 
+/*
+获取每个CTA的最大寄存器数。由GPGPU-Sim的-gpgpu_registers_per_block选项配置。
+*/
 int gpgpu_sim::num_registers_per_block() const {
   return m_shader_config->gpgpu_registers_per_block;
 }
 
+/*
+获取一个warp有多少线程数。由GPGPU-Sim的-gpgpu_shader_core_pipeline的第二个选项配置。
+选项-gpgpu_shader_core_pipeline的参数分别是：<每个SM最大可支配线程数>:<定义一个warp有多少线程>
+*/
 int gpgpu_sim::wrp_size() const { return m_shader_config->warp_size; }
 
+/*
+获取以MHz为单位的时钟域频率的<Core Clock>。由GPGPU-Sim的-gpgpu_clock_domains的第一个选项配置。
+*/
 int gpgpu_sim::shader_clock() const { return m_config.core_freq / 1000; }
 
+/*
+
+*/
 int gpgpu_sim::max_cta_per_core() const {
   return m_shader_config->max_cta_per_core;
 }

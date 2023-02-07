@@ -32,7 +32,11 @@
 #include "../abstract_hardware_model.h"
 
 #include "../tr1_hash_map.h"
-#define mem_map tr1_hash_map
+//"../tr1_hash_map.h"中有如下定义：
+//    #include <unordered_map>                  无序映射
+//    #define tr1_hash_map std::unordered_map   std::unordered_map 重命名为 tr1_hash_map
+//    #define tr1_hash_map_ismap 0              设置 tr1_hash_map_ismap = 0
+#define mem_map tr1_hash_map                  //tr1_hash_map 重命名为 mem_map
 #if tr1_hash_map_ismap == 1
 #define MEM_MAP_RESIZE(hash_size)
 #else
@@ -169,6 +173,10 @@ class memory_space_impl : public memory_space {
   //数中赋值。
   unsigned m_log2_block_size;
   typedef mem_map<mem_addr_t, mem_storage<BSIZE> > map_t;
+  //在 memory_space_impl 对象中的 m_data 与 mem_storage 对象不同，前者是作为一个 std::unordered_map，
+  //其 key-value 对分别为：
+  //    key: mem_addr_t 类型的无符号地址；
+  //    value: mem_storage<BSIZE> 内存页。
   map_t m_data;
   std::map<unsigned, mem_addr_t> m_watchpoints;
 };

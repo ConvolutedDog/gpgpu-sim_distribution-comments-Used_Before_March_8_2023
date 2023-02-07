@@ -2841,7 +2841,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
     cta_info = ptx_cta_lookup[sm_idx];
     cta_info->check_cta_thread_status_and_reset();
   }
-
+  
   //依据SM ID，获取当前SM的local_mem。
   std::map<unsigned, memory_space *> &local_mem_lookup =
       local_memory_lookup[sid];

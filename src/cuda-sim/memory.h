@@ -133,7 +133,7 @@ ptx_reg_t 的映射。寄存器的访问使用方法 ptx_thread_info::get_operan
 memory_space 的对象中。GPU中所有线程可见的内存空间都包含在 gpgpu_t 中，并通过 ptx_thread_info 中的
 接口进行访问（例如，ptx_thread_info::get_global_memory）。
 
-memory_space 作为基类，派生出 memory_space_impl，下面函数的功能详见 memory_space_impl 类的注释。
+memory_space 作为基类，派生出 memory_space_impl，下面函数的功能详见 memory_space_impl 类的注释。 
 */
 class memory_space {
  public:

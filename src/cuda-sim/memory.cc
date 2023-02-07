@@ -64,7 +64,7 @@ memory_space_impl<BSIZE>::memory_space_impl(std::string name,
 }
 
 /*
-仅仅只在存储里写入内容，不更新相关的状态。四个参数分别为：
+简单地在存储里写入内容，不涉及多页存储等问题。四个参数分别为：
 1. mem_addr_t offset：写地址范围的起始地址相对m_data的偏移量。
 2. mem_addr_t index：mem_storage<BSIZE> 对象（内存页）的索引。
 3. size_t length：写的内容的长度，以字节为单位。
@@ -79,7 +79,7 @@ void memory_space_impl<BSIZE>::write_only(mem_addr_t offset, mem_addr_t index,
 }
 
 /*
-在存储里写入内容，并更新相关的状态。四个参数分别为：
+在存储里写入内容，涉及多页存储等问题。四个参数分别为：
 1. mem_addr_t addr：写地址范围的起始地址。
 2. size_t length：写的内容的长度，以字节为单位。
 3. const unsigned char *data：写的数据内容。
@@ -122,31 +122,48 @@ void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
     // slow route for inter-block access
     //如果写数据的长度超过了当前内存页，就可以执行块间访问（跨内存页）的慢速路由。
     //临时变量保存住[写数据的长度]/[相对当前内存页的起始地址的偏移量]/[写数据的全局地址]，后
-    //面根据在什么位置跨内存页再调整。
+    //面根据在什么位置跨内存页再调整。nbytes_remain 即为还剩余的需要写的数据长度，初始时设置
+    //为完整的写数据长度 length。current_addr 为当前写入的全局起始地址，在换页后，需要变为换
+    //页后的写入的全局起始地址。src_offset 是指当前页需要写入的源端数据的偏移地址，例如，第一
+    //页写入时，该偏移量为0，假设写入长度为 length；换页后的需要写入的源端数据的偏移地址变为
+    //0+length=length。
     unsigned nbytes_remain = length;
     unsigned src_offset = 0;
     mem_addr_t current_addr = addr;
 
+    //由于写入过程存在换页，且不知道究竟会换多少页才能把数据写完，因此这里对[还剩余的需要写的数
+    //据长度]循环，直到nbytes_remain变为0，才说明已经把所有数据全写完成了。
     while (nbytes_remain > 0) {
+      //计算current_addr相对当前内存页的起始地址的偏移量。
       unsigned offset = current_addr & (BSIZE - 1);
+      //计算当前起始地址所在的被写入数据的内存页的 page 号。
       mem_addr_t page = current_addr >> m_log2_block_size;
+      //access_limit = current_addr相对当前内存页的起始地址的偏移量 + 写入长度。
       mem_addr_t access_limit = offset + nbytes_remain;
+      //如果access_limit超过页大小 BSIZE，则需要换页。
       if (access_limit > BSIZE) {
         access_limit = BSIZE;
       }
-
+      //换页前的写入长度为：BSIZE - offset。
       size_t tx_bytes = access_limit - offset;
+      //第 page 号内存页写入数据。m_data[page] 是一个mem_storage<BSIZE> 对象（内存页），
+      //调用它的成员函数来实现对其内存页的写入数据。
       m_data[page].write(offset, tx_bytes,
                          &((const unsigned char *)data)[src_offset]);
 
       // advance pointers
+      //前进指针。用于指导换页后的数据写入。
+      //换页后的需要写入的源端数据的偏移地址变为 src_offset+tx_bytes。
       src_offset += tx_bytes;
+      //换页后的写入的全局起始地址为 current_addr+tx_bytes。
       current_addr += tx_bytes;
+      //当前页已经写入 tx_bytes 字节长度数据，剩余需写入数据长度为 nbytes_remain-tx_bytes。
       nbytes_remain -= tx_bytes;
     }
     assert(nbytes_remain == 0);
   }
-
+  
+  //DEBUG用，后面用到再补充。
   if (!m_watchpoints.empty()) {
     std::map<unsigned, mem_addr_t>::iterator i;
     for (i = m_watchpoints.begin(); i != m_watchpoints.end(); i++) {
@@ -159,6 +176,9 @@ void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
   }
 }
 
+/*
+
+*/
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::read_single_block(mem_addr_t blk_idx,
                                                  mem_addr_t addr, size_t length,

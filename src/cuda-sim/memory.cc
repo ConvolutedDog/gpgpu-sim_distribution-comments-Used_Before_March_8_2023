@@ -42,9 +42,17 @@ memory_space 对象是空的，当访问内存空间中单个页面对应的地�
 template <unsigned BSIZE>
 memory_space_impl<BSIZE>::memory_space_impl(std::string name,
                                             unsigned hash_size) {
+  //m_name为这块存储的字符串名字，例如cuda-sim.cc中创建shared memory的时候就给出了该块共享存储的
+  //名字：
+  //    char buf[512];
+  //    snprintf(buf, 512, "shared_%u", sid); <================== m_name
+  //    shared_mem = new memory_space_impl<16 * 1024>(buf, 4);
   m_name = name;
+  //MEM_MAP_RESIZE()在memory.h中定义：
+  //    #define MEM_MAP_RESIZE(hash_size) (m_data.rehash(hash_size))
   MEM_MAP_RESIZE(hash_size);
 
+  //m_log2_block_size=Log2(BSIZE)，这里计算 Log2(BSIZE)，且这里的BSIZE一般应为 2 的倍数。
   m_log2_block_size = -1;
   for (unsigned n = 0, mask = 1; mask != 0; mask <<= 1, n++) {
     if (BSIZE & mask) {
@@ -55,11 +63,13 @@ memory_space_impl<BSIZE>::memory_space_impl(std::string name,
   assert(m_log2_block_size != (unsigned)-1);
 }
 
+
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::write_only(mem_addr_t offset, mem_addr_t index,
                                           size_t length, const void *data) {
   m_data[index].write(offset, length, (const unsigned char *)data);
 }
+
 
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,

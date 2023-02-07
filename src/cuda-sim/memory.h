@@ -132,6 +132,8 @@ ptx_reg_t 的映射。寄存器的访问使用方法 ptx_thread_info::get_operan
 作为输入。对于内存操作数，该方法返回内存操作数的有效地址。编程模型中的每个内存空间都包含在一个类型为 
 memory_space 的对象中。GPU中所有线程可见的内存空间都包含在 gpgpu_t 中，并通过 ptx_thread_info 中的
 接口进行访问（例如，ptx_thread_info::get_global_memory）。
+
+memory_space 作为基类，派生出 memory_space_impl，下面函数的功能详见 memory_space_impl 类的注释。
 */
 class memory_space {
  public:
@@ -154,17 +156,21 @@ class memory_space_impl : public memory_space {
  public:
   //构造函数。
   memory_space_impl(std::string name, unsigned hash_size);
-  //
+  //在存储里写入内容，涉及多页存储等问题。
   virtual void write(mem_addr_t addr, size_t length, const void *data,
                      ptx_thread_info *thd, const ptx_instruction *pI);
+  //简单地在存储里写入内容，不涉及多页存储等问题。
   virtual void write_only(mem_addr_t index, mem_addr_t offset, size_t length,
                           const void *data);
+  //读可能跨内存页的数据。
   virtual void read(mem_addr_t addr, size_t length, void *data) const;
+  //打印存储中的数据。一般DEBUG用，用到再补充。
   virtual void print(const char *format, FILE *fout) const;
-
+  //DEBUG用，用到再补充。
   virtual void set_watch(addr_t addr, unsigned watchpoint);
 
  private:
+  //读单个内存页的数据，详见 memory.cc。
   void read_single_block(mem_addr_t blk_idx, mem_addr_t addr, size_t length,
                          void *data) const;
   //m_name为这块存储的字符串名字，在构造函数中赋值。

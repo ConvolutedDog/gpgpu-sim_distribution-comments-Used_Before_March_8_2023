@@ -78,6 +78,9 @@ void memory_space_impl<BSIZE>::write_only(mem_addr_t offset, mem_addr_t index,
   m_data[index].write(offset, length, (const unsigned char *)data);
 }
 
+/*
+
+*/
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::write(mem_addr_t addr, size_t length,
                                      const void *data,

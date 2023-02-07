@@ -148,8 +148,9 @@ memory_space 为基类，memory_space_impl 为派生出的类，后者以公有�
 template <unsigned BSIZE>
 class memory_space_impl : public memory_space {
  public:
+  //构造函数。
   memory_space_impl(std::string name, unsigned hash_size);
-
+  //
   virtual void write(mem_addr_t addr, size_t length, const void *data,
                      ptx_thread_info *thd, const ptx_instruction *pI);
   virtual void write_only(mem_addr_t index, mem_addr_t offset, size_t length,
@@ -162,7 +163,10 @@ class memory_space_impl : public memory_space {
  private:
   void read_single_block(mem_addr_t blk_idx, mem_addr_t addr, size_t length,
                          void *data) const;
+  //m_name为这块存储的字符串名字，在构造函数中赋值。
   std::string m_name;
+  //m_log2_block_size=Log2(BSIZE)，这里计算 Log2(BSIZE)，且这里的BSIZE一般应为 2 的倍数。在构造函
+  //数中赋值。
   unsigned m_log2_block_size;
   typedef mem_map<mem_addr_t, mem_storage<BSIZE> > map_t;
   map_t m_data;

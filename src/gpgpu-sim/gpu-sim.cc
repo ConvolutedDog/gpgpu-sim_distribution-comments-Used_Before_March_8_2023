@@ -351,6 +351,7 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_ignore_resources_limitation", OPT_BOOL,
                          &gpgpu_ignore_resources_limitation,
                          "gpgpu_ignore_resources_limitation (default 0)", "0");
+  //Shader Core中并发cta的最大数量。-gpgpu_shader_cta <# CTA/shader core, default=8>
   option_parser_register(
       opp, "-gpgpu_shader_cta", OPT_UINT32, &max_cta_per_core,
       "Maximum number of concurrent CTAs in shader (default 8)", "8");
@@ -1117,12 +1118,15 @@ int gpgpu_sim::wrp_size() const { return m_shader_config->warp_size; }
 int gpgpu_sim::shader_clock() const { return m_config.core_freq / 1000; }
 
 /*
-
+获取Shader Core中并发cta的最大数量。由GPGPU-Sim的-gpgpu_shader_cta选项配置。
 */
 int gpgpu_sim::max_cta_per_core() const {
   return m_shader_config->max_cta_per_core;
 }
 
+/*
+
+*/
 int gpgpu_sim::get_max_cta(const kernel_info_t &k) const {
   return m_shader_config->max_cta(k);
 }

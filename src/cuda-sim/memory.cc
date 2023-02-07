@@ -333,6 +333,9 @@ void memory_space_impl<BSIZE>::set_watch(addr_t addr, unsigned watchpoint) {
   m_watchpoints[watchpoint] = addr;
 }
 
+
+
+
 template class memory_space_impl<32>;
 template class memory_space_impl<64>;
 template class memory_space_impl<8192>;

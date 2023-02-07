@@ -63,7 +63,9 @@ memory_space_impl<BSIZE>::memory_space_impl(std::string name,
   assert(m_log2_block_size != (unsigned)-1);
 }
 
+/*
 
+*/
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::write_only(mem_addr_t offset, mem_addr_t index,
                                           size_t length, const void *data) {

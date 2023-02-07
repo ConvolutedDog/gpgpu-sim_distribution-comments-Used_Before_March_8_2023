@@ -1508,6 +1508,7 @@ class shader_core_config : public core_config {
   unsigned n_thread_per_shader;
   unsigned n_regfile_gating_group;
   unsigned max_warps_per_shader;
+  //
   unsigned
       max_cta_per_core;  // Limit on number of concurrent CTAs in shader core
   unsigned max_barriers_per_cta;

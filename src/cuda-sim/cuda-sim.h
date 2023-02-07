@@ -98,7 +98,9 @@ class functionalCoreSim : public core_t {
   void createWarp(unsigned warpId);
 
   // each warp live thread count and barrier indicator
+  //每个warp活跃线程数
   unsigned *m_liveThreadCount;
+  //warp屏障指示器
   bool *m_warpAtBarrier;
 };
 

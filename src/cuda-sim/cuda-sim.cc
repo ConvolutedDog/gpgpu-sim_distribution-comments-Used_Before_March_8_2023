@@ -2815,7 +2815,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
 
   //printf("<gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders>=%d,<hw_cta_id>=%d,<sid>=%d\n", 
   //        gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders, hw_cta_id, sid);
-
+  
   if (shared_memory_lookup.find(sm_idx) == shared_memory_lookup.end()) {
     if (g_debug_execution >= 1) {
       printf("  <CTA alloc> : sm_idx=%u sid=%u max_cta_per_sm=%u\n", sm_idx,

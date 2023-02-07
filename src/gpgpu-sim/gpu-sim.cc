@@ -241,7 +241,6 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   //dominator of x”的定义：所有路径经由x点则必经由y点，以此可以确保在x点分化出去的所有线程必经过y点；
   //并且“immediate post-dominator”的定义又保证了y点是最早可以汇聚到所有分化线程的点，越早的汇聚则意
   //味着SIMD流水线可以越早地被更充分地利用。
-  */
   option_parser_register(opp, "-gpgpu_simd_model", OPT_INT32, &model,
                          "1 = post-dominator", "1");
   //Shader Core Pipeline配置。
@@ -595,92 +594,126 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   }
 }
 
+/*
+GPGPU-Sim 3.x提供了一个通用的命令行选项解析器，允许不同的软件模块通过一个简单的接口来注册他们的选项。
+选项解析器在 gpgpusim_entrypoint.cc 的 gpgpu_ptx_sim_init_perf() 中实例化。选项在 reg_options() 
+函数中使用函数添加。
+*/
 void gpgpu_sim_config::reg_options(option_parser_t opp) {
   gpgpu_functional_sim_config::reg_options(opp);
   m_shader_config.reg_options(opp);
   m_memory_config.reg_options(opp);
   power_config::reg_options(opp);
+  //在达到最大周期数后尽早终止GPU模拟(0 = no limit)。-gpgpu_max_cycle <# cycles>
   option_parser_register(opp, "-gpgpu_max_cycle", OPT_INT64, &gpu_max_cycle_opt,
                          "terminates gpu simulation early (0 = no limit)", "0");
+  //在达到最大指令数后尽早终止GPU模拟(0 = no limit)。-gpgpu_max_insn <# insns>
   option_parser_register(opp, "-gpgpu_max_insn", OPT_INT64, &gpu_max_insn_opt,
                          "terminates gpu simulation early (0 = no limit)", "0");
+  //在达到最大CTA并发数后尽早终止GPU模拟(0 = no limit)。
   option_parser_register(opp, "-gpgpu_max_cta", OPT_INT32, &gpu_max_cta_opt,
                          "terminates gpu simulation early (0 = no limit)", "0");
+  //在达到最大CTA完成数后尽早终止GPU模拟(0 = no limit)。
   option_parser_register(opp, "-gpgpu_max_completed_cta", OPT_INT32,
                          &gpu_max_completed_cta_opt,
                          "terminates gpu simulation early (0 = no limit)", "0");
+  //显示运行时统计信息。-gpgpu_runtime_stat <frequency>:<flag> 
   option_parser_register(
       opp, "-gpgpu_runtime_stat", OPT_CSTR, &gpgpu_runtime_stat,
       "display runtime statistics such as dram utilization {<freq>:<flag>}",
       "10000:0");
+  //模拟活动消息之间的最小秒数（0=始终打印）。
   option_parser_register(opp, "-liveness_message_freq", OPT_INT64,
                          &liveness_message_freq,
                          "Minimum number of seconds between simulation "
                          "liveness messages (0 = always print)",
                          "1");
+  //最大的设备计算能力。
   option_parser_register(opp, "-gpgpu_compute_capability_major", OPT_UINT32,
                          &gpgpu_compute_capability_major,
                          "Major compute capability version number", "7");
+  //最小的设备计算能力。
   option_parser_register(opp, "-gpgpu_compute_capability_minor", OPT_UINT32,
                          &gpgpu_compute_capability_minor,
                          "Minor compute capability version number", "0");
+  //在每个内核调用结束时刷新L1缓存。
   option_parser_register(opp, "-gpgpu_flush_l1_cache", OPT_BOOL,
                          &gpgpu_flush_l1_cache,
                          "Flush L1 cache at the end of each kernel call", "0");
+  //在每个内核调用结束时刷新L2缓存。
   option_parser_register(opp, "-gpgpu_flush_l2_cache", OPT_BOOL,
                          &gpgpu_flush_l2_cache,
                          "Flush L2 cache at the end of each kernel call", "0");
+  //在死锁时停止模拟。-gpgpu_deadlock_detect <0=off, 1=on(default)>
   option_parser_register(
       opp, "-gpgpu_deadlock_detect", OPT_BOOL, &gpu_deadlock_detect,
       "Stop the simulation at deadlock (1=on (default), 0=off)", "1");
+  //启用指令分类，如果启用，将对每个内核的ptx指令类型进行分类（现在最多255个内核）。
+  //-gpgpu_ptx_instruction_classification <0=off, 1=on (default)>
   option_parser_register(
       opp, "-gpgpu_ptx_instruction_classification", OPT_INT32,
       &(gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification),
       "if enabled will classify ptx instruction types per kernel (Max 255 "
       "kernels now)",
       "0");
+  //在性能或功能模拟之间进行选择（请注意，功能模拟可能会错误地模拟某些ptx代码，这些代码需要warp的每
+  //个元素在lock-step中执行）。-gpgpu_ptx_sim_mode <0=performance(default), 1=functional>
   option_parser_register(
       opp, "-gpgpu_ptx_sim_mode", OPT_INT32,
       &(gpgpu_ctx->func_sim->g_ptx_sim_mode),
       "Select between Performance (default) or Functional simulation (1)", "0");
+  //以MHz为单位的时钟域频率。
+  //-gpgpu_clock_domains <Core Clock>:<Interconnect Clock>:<L2 Clock>:<DRAM Clock>
   option_parser_register(opp, "-gpgpu_clock_domains", OPT_CSTR,
                          &gpgpu_clock_domains,
                          "Clock Domain Frequencies in MhZ {<Core Clock>:<ICNT "
                          "Clock>:<L2 Clock>:<DRAM Clock>}",
                          "500.0:2000.0:2000.0:2000.0");
+  //可以在GPU上同时运行的最大内核数。
   option_parser_register(
       opp, "-gpgpu_max_concurrent_kernel", OPT_INT32, &max_concurrent_kernel,
       "maximum kernels that can run concurrently on GPU", "8");
+  //控制流记录器中每个快照之间的间隔。
   option_parser_register(
       opp, "-gpgpu_cflog_interval", OPT_INT32, &gpgpu_cflog_interval,
       "Interval between each snapshot in control flow logger", "0");
+  //打开可视化工具输出（使用AerialVision可视化工具绘制保存在日志中的数据）。
   option_parser_register(opp, "-visualizer_enabled", OPT_BOOL,
                          &g_visualizer_enabled,
                          "Turn on visualizer output (1=On, 0=Off)", "1");
+  //指定可视化工具的输出日志文件。
   option_parser_register(opp, "-visualizer_outputfile", OPT_CSTR,
                          &g_visualizer_filename,
                          "Specifies the output log file for visualizer", NULL);
+  //可视化工具输出日志的压缩级别（0=无压缩，9=最大压缩）。
   option_parser_register(
       opp, "-visualizer_zlevel", OPT_INT32, &g_visualizer_zlevel,
       "Compression level of the visualizer output log (0=no comp, 9=highest)",
       "6");
+  //GPU线程堆栈大小。
   option_parser_register(opp, "-gpgpu_stack_size_limit", OPT_INT32,
                          &stack_size_limit, "GPU thread stack size", "1024");
+  //GPU malloc堆大小。
   option_parser_register(opp, "-gpgpu_heap_size_limit", OPT_INT32,
                          &heap_size_limit, "GPU malloc heap size ", "8388608");
+  //GPU设备运行时同步深度限制。
   option_parser_register(opp, "-gpgpu_runtime_sync_depth_limit", OPT_INT32,
                          &runtime_sync_depth_limit,
                          "GPU device runtime synchronize depth", "2");
+  //GPU设备运行时挂起启动计数限制。
   option_parser_register(opp, "-gpgpu_runtime_pending_launch_count_limit",
                          OPT_INT32, &runtime_pending_launch_count_limit,
                          "GPU device runtime pending launch count", "2048");
+  //全局启用或禁用所有trace。如果启用，则打印 trace_components 。
   option_parser_register(opp, "-trace_enabled", OPT_BOOL, &Trace::enabled,
                          "Turn on traces", "0");
+  //要启用trance的逗号分隔列表，完整列表可在 src/trace_streams.tup 中找到。
   option_parser_register(opp, "-trace_components", OPT_CSTR, &Trace::config_str,
                          "comma seperated list of traces to enable. "
                          "Complete list found in trace_streams.tup. "
                          "Default none",
                          "none");
+  //对于与给定shader core关联的元素（如warp调度器或记分牌），仅打印来自该核心的trace。
   option_parser_register(
       opp, "-trace_sampling_core", OPT_INT32, &Trace::sampling_core,
       "The core which is printed using CORE_DPRINTF. Default 0", "0");
@@ -692,13 +725,15 @@ void gpgpu_sim_config::reg_options(option_parser_t opp) {
   gpgpu_ctx->stats->ptx_file_line_stats_options(opp);
 
   // Jin: kernel launch latency
+  //内核启动延迟（以周期为单位）。
   option_parser_register(opp, "-gpgpu_kernel_launch_latency", OPT_INT32,
                          &(gpgpu_ctx->device_runtime->g_kernel_launch_latency),
                          "Kernel launch latency in cycles. Default: 0", "0");
+  //开启CDP。
   option_parser_register(opp, "-gpgpu_cdp_enabled", OPT_BOOL,
                          &(gpgpu_ctx->device_runtime->g_cdp_enabled),
                          "Turn on CDP", "0");
-
+  //线程块启动延迟（以周期为单位）。
   option_parser_register(opp, "-gpgpu_TB_launch_latency", OPT_INT32,
                          &(gpgpu_ctx->device_runtime->g_TB_launch_latency),
                          "thread block launch latency in cycles. Default: 0",
@@ -2153,10 +2188,9 @@ void shader_core_ctx::dump_warp_state(FILE *fout) const {
 
 void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) {
   if (m_memory_config->m_perf_sim_memcpy) {
-    // if(!m_config.trace_driven_mode)    //in trace-driven mode, CUDA runtime
-    // can start nre data structure at any position 	assert (dst_start_addr %
-    // 32
-    //== 0);
+    //if(!m_config.trace_driven_mode)    
+    //in trace-driven mode, CUDA runtime can start nre data structure at any position 	
+    //  assert (dst_start_addr % 32 == 0);
 
     for (unsigned counter = 0; counter < count; counter += 32) {
       const unsigned wr_addr = dst_start_addr + counter;

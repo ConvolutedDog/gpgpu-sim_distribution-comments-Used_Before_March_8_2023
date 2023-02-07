@@ -103,40 +103,43 @@ Clock Domains
 受一个OptionParser指针作为参数，用于将能耗模型参数添加到OptionParser实例中。
 */
 void power_config::reg_options(class OptionParser *opp) {
+  //设置gpuwattch功耗评估模型的xml_file存储路径，默认为"gpuwattch.xml"。
   option_parser_register(opp, "-gpuwattch_xml_file", OPT_CSTR,
                          &g_power_config_name, "GPUWattch XML file",
                          "gpuwattch.xml");
-
+  //设置开启gpuwattch功耗评估开关。
   option_parser_register(opp, "-power_simulation_enabled", OPT_BOOL,
                          &g_power_simulation_enabled,
                          "Turn on power simulator (1=On, 0=Off)", "0");
-
+  //设置Dump功耗评估输出的节拍间隔。
   option_parser_register(opp, "-power_per_cycle_dump", OPT_BOOL,
                          &g_power_per_cycle_dump,
                          "Dump detailed power output each cycle", "0");
 
   // Output Data Formats
+  //设置开启生成功耗跟踪文件。
   option_parser_register(
       opp, "-power_trace_enabled", OPT_BOOL, &g_power_trace_enabled,
       "produce a file for the power trace (1=On, 0=Off)", "0");
-
+  //功耗跟踪输出日志的压缩级别。
   option_parser_register(
       opp, "-power_trace_zlevel", OPT_INT32, &g_power_trace_zlevel,
       "Compression level of the power trace output log (0=no comp, 9=highest)",
       "6");
-
+  //生成稳定功耗电平的文件。
   option_parser_register(
       opp, "-steady_power_levels_enabled", OPT_BOOL,
       &g_steady_power_levels_enabled,
       "produce a file for the steady power levels (1=On, 0=Off)", "0");
-
+  //允许偏差:样本数量。
   option_parser_register(opp, "-steady_state_definition", OPT_CSTR,
                          &gpu_steady_state_definition,
                          "allowed deviation:number of samples", "8:4");
 }
 
 /*
-
+该函数用于注册GPGPU-Sim中用于控制存储模型的命令行选项，并将它们添加到OptionParser实例中。该函数接
+受一个OptionParser指针作为参数，用于将存储模型参数添加到OptionParser实例中。
 */
 void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_perf_sim_memcpy", OPT_BOOL,
@@ -228,22 +231,21 @@ void memory_config::reg_options(class OptionParser *opp) {
   m_address_mapping.addrdec_setoption(opp);
 }
 
-//注册每个SM的参数设置
+/*
+注册每个Shader Core（SM）的参数设置。
+*/
 void shader_core_config::reg_options(class OptionParser *opp) {
-  /*
-  SIMT堆栈处理分支的模式，1代表采用后支配者模式，其他暂不支持。
-  传统的SIMT Stack（PDOM机制）在线程束分化后采用了一种“unified”机制，令所有分化的线程束“统一地”在
-  条件跳转指令的“immediate post-dominator”处（即IPDOM处）进行汇聚（reconverge）。根据“y is post-
-  dominator of x”的定义：所有路径经由x点则必经由y点，以此可以确保在x点分化出去的所有线程必经过y点；
-  并且“immediate post-dominator”的定义又保证了y点是最早可以汇聚到所有分化线程的点，越早的汇聚则意
-  味着SIMD流水线可以越早地被更充分地利用。
+  //SIMT堆栈处理分支的模式，1代表采用后支配者模式，其他暂不支持。
+  //传统的SIMT Stack（PDOM机制）在线程束分化后采用了一种“unified”机制，令所有分化的线程束“统一地”在
+  //条件跳转指令的“immediate post-dominator”处（即IPDOM处）进行汇聚（reconverge）。根据“y is post-
+  //dominator of x”的定义：所有路径经由x点则必经由y点，以此可以确保在x点分化出去的所有线程必经过y点；
+  //并且“immediate post-dominator”的定义又保证了y点是最早可以汇聚到所有分化线程的点，越早的汇聚则意
+  //味着SIMD流水线可以越早地被更充分地利用。
   */
   option_parser_register(opp, "-gpgpu_simd_model", OPT_INT32, &model,
                          "1 = post-dominator", "1");
-  /*
-  Shader Core Pipeline配置。
-  参数分别是：<每个SM最大可支配线程数>:<定义一个warp有多少线程>
-  */
+  //Shader Core Pipeline配置。
+  //参数分别是：<每个SM最大可支配线程数>:<定义一个warp有多少线程>
   option_parser_register(
       opp, "-gpgpu_shader_core_pipeline", OPT_CSTR,
       &gpgpu_shader_core_pipeline_opt,
@@ -254,29 +256,27 @@ void shader_core_config::reg_options(class OptionParser *opp) {
                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                          "alloc>,<mshr>:<N>:<merge>,<mq>:<rf>}",
                          "8:128:5,L:R:m:N,F:128:4,128:2");
-  /*
-  L1常量缓存（只读）配置。逐出策略：L=LRU，F=FIFO，R=Random。???
-  1. cache_config: 缓存配置，用于指定缓存的类型，包括：L=LRU(Least Recently Used)、F=FIFO(First 
-     In First Out)、R=Random和Pseudo-LRU。
-  2. cache_size: 缓存大小，用于指定缓存的大小，以字节为单位。
-  3. line_sz: 缓存行大小，用于指定缓存行的大小，以字节为单位。
-  4. associativity: 组相关性，用于指定缓存的组相关性，例如2-way、4-way、8-way等。
-  5. num_banks: 存储器银行数量，用于指定存储器银行的数量，可以是1、2、4等。
-  6. throughput: 缓存吞吐量，用于指定缓存的吞吐量，以每秒字节为单位。
-  7. latency: 缓存延迟，用于指定缓存的延迟，以周期数为单位。
-  ！！！错误！！！理解：
-  <nsets>：缓存行的数量，即缓存的容量
-  <bsize>：每个缓存行的字节数
-  <assoc>：缓存的联想度，即一个组中的行数
-  <rep>：替换策略，有LRU，FIFO，Random等
-  <wr>：写策略，有write-back和write-through
-  <alloc>：写分配策略，有write-allocate和no-write-allocate
-  <wr_alloc>：写回分配策略，有write-allocate和no-write-allocate
-  <mshr>：多路复用请求寄存器的大小
-  <N>：每个请求寄存器中最多存储的请求数
-  <merge>：是否启用请求合并，有yes和no
-  <mq>：是否启用队列，有yes和no
-  */
+  //L1常量缓存（只读）配置。逐出策略：L=LRU，F=FIFO，R=Random。???
+  //1. cache_config: 缓存配置，用于指定缓存的类型，包括：L=LRU(Least Recently Used)、F=FIFO(First 
+  //   In First Out)、R=Random和Pseudo-LRU。
+  //2. cache_size: 缓存大小，用于指定缓存的大小，以字节为单位。
+  //3. line_sz: 缓存行大小，用于指定缓存行的大小，以字节为单位。
+  //4. associativity: 组相关性，用于指定缓存的组相关性，例如2-way、4-way、8-way等。
+  //5. num_banks: 存储器银行数量，用于指定存储器银行的数量，可以是1、2、4等。
+  //6. throughput: 缓存吞吐量，用于指定缓存的吞吐量，以每秒字节为单位。
+  //7. latency: 缓存延迟，用于指定缓存的延迟，以周期数为单位。
+  //！！！错误！！！理解：
+  //<nsets>：缓存行的数量，即缓存的容量
+  //<bsize>：每个缓存行的字节数
+  //<assoc>：缓存的联想度，即一个组中的行数
+  //<rep>：替换策略，有LRU，FIFO，Random等
+  //<wr>：写策略，有write-back和write-through
+  //<alloc>：写分配策略，有write-allocate和no-write-allocate
+  //<wr_alloc>：写回分配策略，有write-allocate和no-write-allocate
+  //<mshr>：多路复用请求寄存器的大小
+  //<N>：每个请求寄存器中最多存储的请求数
+  //<merge>：是否启用请求合并，有yes和no
+  //<mq>：是否启用队列，有yes和no
   option_parser_register(
       opp, "-gpgpu_const_cache:l1", OPT_CSTR, &m_L1C_config.m_config_string,
       "per-shader L1 constant memory cache  (READ-ONLY) config "
@@ -732,7 +732,8 @@ kernel_info_t类在../abstract_hardware_model.h中定义。
 void gpgpu_sim::launch(kernel_info_t *kinfo) {
   //cta_size是每个线程块中的线程数量
   unsigned cta_size = kinfo->threads_per_cta();
-  //如果程序的每个线程块中的线程数量 > 每个SIMT Core配置的线程数（由-gpgpu_shader配置），输出错误信息
+  //如果程序的每个线程块中的线程数量 > 每个SIMT Core配置的线程数（由-gpgpu_shader配置），输出错误信
+  //息
   if (cta_size > m_shader_config->n_thread_per_shader) {
     printf(
         "Execution error: Shader kernel CTA (block) size is too large for "
@@ -747,11 +748,9 @@ void gpgpu_sim::launch(kernel_info_t *kinfo) {
         "size.\n");
     abort();
   }
-  /*
-  m_running_kernels由gpu-sim.h中的`std::vector<kernel_info_t *>`定义，是一组kernel_info_t*
-  组成的向量，它存储着正在运行的内核的信息。下面对这个向量遍历，找到一个空位，加入新的即将运行的内
-  核kinfo。如果向量的某个位置为NULL或者该位置->done()显示该核函数已完成，则将kinfo加入到此位置。
-  */
+  //m_running_kernels由gpu-sim.h中的`std::vector<kernel_info_t *>`定义，是一组kernel_info_t*
+  //组成的向量，它存储着正在运行的内核的信息。下面对这个向量遍历，找到一个空位，加入新的即将运行的内
+  //核kinfo。如果向量的某个位置为NULL或者该位置->done()显示该核函数已完成，则将kinfo加入到此位置。
   unsigned n = 0;
   for (n = 0; n < m_running_kernels.size(); n++) {
     if ((NULL == m_running_kernels[n]) || m_running_kernels[n]->done()) {
@@ -806,8 +805,8 @@ bool gpgpu_sim::kernel_more_cta_left(kernel_info_t *kernel) const {
 }
 
 /*
-该函数用于检查当前是否可用更多的CTA（Compute Thread Array）可以执行。它检查当前活动的CTA数量，并返回
-是否有更多CTA可以执行的布尔值。如果已经达到GPU最大的CTA数（由gpgpu_sim::hit_max_cta_count()判断），
+该函数用于检查当前是否可用更多的CTA（Compute Thread Array）可以执行。它检查当前活动的CTA数量，并返
+回是否有更多CTA可以执行的布尔值。如果已达到GPU最大的CTA数（由gpgpu_sim::hit_max_cta_count()判断），
 则没有剩余的CTA，返回False；如果某个m_running_kernels向量里的kernel非空，且kernel->
 no_more_ctas_to_run()为假即kernel自己还可有多余CTA执行，则返回True。
  */
@@ -822,10 +821,10 @@ bool gpgpu_sim::get_more_cta_left() const {
 }
 
 /*
-该函数用于减少内核延迟（kernel latency），即减少从发出内核命令到内核完成执行的时间（对所有正在运行的内
-核的延迟减1）。该函数可以用于模拟GPU内核的性能，以及分析程序的性能。m_kernel_TB_latency表示每一个线程
-块的延迟时间，即从发出线程块到它完成执行的时间。m_kernel_TB_latency是GPGPU-Sim中用于表示内核启动时间
-的变量，它表示从内核启动到内核完成执行所需要的时间。
+该函数用于减少内核延迟（kernel latency），即减少从发出内核命令到内核完成执行的时间（对所有正在运行的
+内核的延迟减1）。该函数可以用于模拟GPU内核的性能，以及分析程序的性能。m_kernel_TB_latency表示每一个
+线程块的延迟时间，即从发出线程块到它完成执行的时间。m_kernel_TB_latency是GPGPU-Sim中用于表示内核启
+动时间的变量，它表示从内核启动到内核完成执行所需要的时间。
 */
 void gpgpu_sim::decrement_kernel_latency() {
   for (unsigned n = 0; n < m_running_kernels.size(); n++) {
@@ -835,30 +834,31 @@ void gpgpu_sim::decrement_kernel_latency() {
 }
 
 /*
-m_last_issued_kernel内部变量表示最近一次发出的内核。它的值是一个指向内核的指针，可以用来跟踪内核的执行
-进度。m_running_kernels[m_last_issued_kernel]指向的是上一次发出的内核。该函数用于从当前活动内核列表中
-选择最优的内核，以便将其分配给GPU。它返回一个指向内核信息结构的指针，该结构包含有关内核的所有信息，包括
-内核名称，参数，线程数，块数等。
+m_last_issued_kernel内部变量表示最近一次发出的内核。它的值是一个指向内核的指针，可以用来跟踪内核的执
+行进度。m_running_kernels[m_last_issued_kernel]指向的是上一次发出的内核。该函数用于从当前活动内核
+列表中选择最优的内核，以便将其分配给GPU。它返回一个指向内核信息结构的指针，该结构包含有关内核的所有信
+息，包括内核名称，参数，线程数，块数等。
 */
 kernel_info_t *gpgpu_sim::select_kernel() {
-  //如果该内核非空，且该内核可有更多的CTA（Compute Thread Array）运行，且其m_kernel_TB_latency为零，
-  //则m_last_issued_kernel可以被优先选择。如果不满足这些条件，则会从所有正在运行的内核中选择。
+  //如果该内核非空，且该内核可有更多的CTA（Compute Thread Array）运行，且其m_kernel_TB_latency为
+  //零，则m_last_issued_kernel可以被优先选择。如果不满足这些条件，则会从所有正在运行的内核中选择。
   if (m_running_kernels[m_last_issued_kernel] &&
       !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run() &&
       !m_running_kernels[m_last_issued_kernel]->m_kernel_TB_latency) {
     //get_uid()返回一个唯一的32位整数，用于标识不同的GPU线程。
     unsigned launch_uid = m_running_kernels[m_last_issued_kernel]->get_uid();
-    //m_executed_kernel_uids存储了所有已经执行的内核的唯一标识符，即uid。std::find函数如果没在已经执
-    //行完毕的内核列表中找到该内核，则说明它还没被执行完，可以被选择执行。
+    //m_executed_kernel_uids存储了所有已经执行的内核的唯一标识符，即uid。std::find函数如果没在已经
+    //执行完毕的内核列表中找到该内核，则说明它还没被执行完，可以被选择执行。
     if (std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(),
                   launch_uid) == m_executed_kernel_uids.end()) {
-      //gpu_tot_sim_cycle变量表示当前的仿真周期，即从仿真开始到当前的总仿真时间。gpu_sim_cycle变量表
-      //示执行此内核所需的时钟周期数（以shader core的时钟域为单位）。
+      //gpu_tot_sim_cycle变量表示当前的仿真周期，即从仿真开始到当前的总仿真时间。gpu_sim_cycle变量
+      //表示执行此内核所需的时钟周期数（以shader core的时钟域为单位）。
       //m_running_kernels[m_last_issued_kernel]->start_cycle变量表示最后一个发布的内核的开始周期，
       //用于跟踪内核的执行情况，以便计算内核的总执行时间。
-      //选择此内核执行以后，更新m_running_kernels[m_last_issued_kernel]->start_cycle以便下次选择新
-      //内核执行时使用，这样一个内核一个内核的累加时间。同时，m_running_kernels[m_last_issued_kernel]
-      //的状态更新为executed，把其uid压入m_executed_kernel_uids，把其name压入m_executed_kernel_names。
+      //选择此内核执行以后，更新m_running_kernels[m_last_issued_kernel]->start_cycle以便下次选择
+      //新内核执行时使用，这样一个内核一个内核的累加时间。
+      //同时，m_running_kernels[m_last_issued_kernel]的状态更新为executed，把其uid压入m_executed
+      //_kernel_uids，把其name压入m_executed_kernel_names。
       m_running_kernels[m_last_issued_kernel]->start_cycle =
           gpu_sim_cycle + gpu_tot_sim_cycle;
       m_executed_kernel_uids.push_back(launch_uid);
@@ -867,8 +867,8 @@ kernel_info_t *gpgpu_sim::select_kernel() {
     }
     return m_running_kernels[m_last_issued_kernel];
   }
-  //m_last_issued_kernel不满足被优先选择执行的条件时，则从所有正在运行的内核中选择，选择策略是如下方式
-  //计算(n + m_last_issued_kernel + 1) % m_config.max_concurrent_kernel。
+  //m_last_issued_kernel不满足被优先选择执行的条件时，则从所有正在运行的内核中选择，选择策略是如下方
+  //式计算(n + m_last_issued_kernel + 1) % m_config.max_concurrent_kernel。
   //max_concurrent_kernel表示模拟的GPU上可能并发执行的最大内核数量。
   for (unsigned n = 0; n < m_running_kernels.size(); n++) {
     unsigned idx = (n + m_last_issued_kernel + 1) % m_config.max_concurrent_kernel;
@@ -935,12 +935,12 @@ void gpgpu_sim::stop_all_running_kernels() {
 
 /*
 创建SIMT Cluster。
-m_shader_config：定义shader处理器的配置，包括每个shader处理器的指令宽度、数据宽度、
-指令缓存大小等；
-m_memory_config：定义内存模块的配置，包括每个内存模块的读写带宽、latency等；
-m_shader_stats：定义shader处理器的统计信息，包括每个shader处理器的指令执行次数、指
-令缓存命中次数等；
-m_memory_stats：定义内存模块的统计信息，包括每个内存模块的读写次数、cache命中次数等；
+  1.m_shader_config：定义shader处理器的配置，包括每个shader处理器的指令宽度、数据宽度、指令缓存大小
+    等；
+  2.m_memory_config：定义内存模块的配置，包括每个内存模块的读写带宽、latency等；
+  3.m_shader_stats：定义shader处理器的统计信息，包括每个shader处理器的指令执行次数、指令缓存命中次
+    数等；
+  4.m_memory_stats：定义内存模块的统计信息，包括每个内存模块的读写次数、cache命中次数等；
 */
 void exec_gpgpu_sim::createSIMTCluster() {
   //m_cluster在gpu-sim.h中定义：class simt_core_cluster **m_cluster;
@@ -1223,11 +1223,15 @@ void gpgpu_sim::print_stats() {
 
 
 /* 
-This function checks if any deadlock has occurred in the GPGPU-Sim simulator. It performs the following steps:
-1. Traverse all the active threads in the simulator and check if any of the threads are waiting for a shared resource.
+This function checks if any deadlock has occurred in the GPGPU-Sim simulator. It performs 
+the following steps:
+1. Traverse all the active threads in the simulator and check if any of the threads are 
+   waiting for a shared resource.
 2. If any thread is waiting, check if any other thread is holding the resource.
-3. If no thread is holding the resource, then a deadlock has occurred and the simulator should be halted.
-4. If a thread is holding the resource, then the simulator should continue running and the deadlock check should be repeated at a later time.
+3. If no thread is holding the resource, then a deadlock has occurred and the simulator 
+   should be halted.
+4. If a thread is holding the resource, then the simulator should continue running and the 
+   deadlock check should be repeated at a later time.
 */
 void gpgpu_sim::deadlock_check() {
   if (m_config.gpu_deadlock_detect && gpu_deadlock) {
@@ -1724,7 +1728,7 @@ void shader_core_ctx::release_shader_resource_1block(unsigned hw_ctaid,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Launches a cooperative thread array (CTA).
@@ -1855,7 +1859,7 @@ void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
                  m_gpu->gpu_tot_sim_cycle);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
 
 void dram_t::dram_log(int task) {
   if (task == SAMPLELOG) {

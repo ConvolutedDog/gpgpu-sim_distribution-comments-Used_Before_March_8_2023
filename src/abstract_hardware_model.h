@@ -403,6 +403,7 @@ class core_config {
     return ((addr / WORD_SIZE) % num_shmem_bank);
   }
   unsigned mem_warp_parts;
+  //每个SIMT Core（也称为Shader Core）的共享存储大小。由GPGPU-Sim的-gpgpu_shmem_size选项配置。
   mutable unsigned gpgpu_shmem_size;
   unsigned gpgpu_shmem_sizeDefault;
   unsigned gpgpu_shmem_sizePrefL1;

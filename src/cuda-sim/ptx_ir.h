@@ -46,15 +46,30 @@
 
 class gpgpu_context;
 
+/*
+type_info_key 包含关于数据对象类型的信息（在指令解释期间使用）。
+*/
 class type_info_key {
  public:
+  //构造函数。
   type_info_key() {
+    //m_is_non_arch_reg 的意思详见 void set_is_non_arch_reg() 的注释。
     m_is_non_arch_reg = false;
+    //标志是否已经完成 type_info_key 对象中的各成员变量的初始化。
     m_init = false;
   }
+  
+  //构造函数+初始化成员变量。六个参数为：
+  //  1.memory_space_t space_spec：
+  //  2.int scalar_type_spec：
+  //  3.int vector_spec：
+  //  4.int alignment_spec：
+  //  5.int extern_spec：
+  //  6.int array_dim：
   type_info_key(memory_space_t space_spec, int scalar_type_spec,
                 int vector_spec, int alignment_spec, int extern_spec,
                 int array_dim) {
+    //m_is_non_arch_reg 的意思详见 void set_is_non_arch_reg() 的注释。
     m_is_non_arch_reg = false;
     m_init = true;
     m_space_spec = space_spec;
@@ -82,8 +97,16 @@ class type_info_key {
     assert(m_init);
     return m_array_dim;
   }
-  void set_is_non_arch_reg() { m_is_non_arch_reg = true; }
 
+  //在处理PTX指令时，有可能会遇到一条指令中存在寄存器："_"（暂时我跑的代码里还没遇到过这种带有"_"寄存
+  //器的指令）。m_is_non_arch_reg 用于支持表示为"_"的寄存器的初始设置代码。当未读取或写入指令操作数
+  //时，使用此寄存器。然而，解析器必须将其识别为合法的寄存器，但我们不想将其传递给微体系结构寄存器，传递
+  //给性能模拟器。为此，我们向符号表中添加一个符号，但将其标记为non_arch_reg，这样不会影响性能模拟。并
+  //且，在这里，将带有"_"寄存器的指令中的"_"设置为null_key（null_key就是当前类的一个对象），并设置
+  //null_key.set_is_non_arch_reg()。
+  void set_is_non_arch_reg() { m_is_non_arch_reg = true; }
+  
+  //m_is_non_arch_reg 的意思详见 void set_is_non_arch_reg() 的注释。
   bool is_non_arch_reg() const { return m_is_non_arch_reg; }
   bool is_reg() const { return m_space_spec == reg_space; }
   bool is_param_kernel() const { return m_space_spec == param_space_kernel; }
@@ -112,6 +135,7 @@ class type_info_key {
   int m_extern_spec;
   int m_array_dim;
   int m_is_function;
+  //m_is_non_arch_reg 的意思详见 void set_is_non_arch_reg() 的注释。
   bool m_is_non_arch_reg;
 
   friend struct type_info_key_compare;
@@ -134,6 +158,9 @@ struct type_info_key_compare {
   }
 };
 
+/*
+type_info 包含关于数据对象类型的信息（在指令解释期间使用）。
+*/
 class type_info {
  public:
   type_info(symbol_table *scope, type_info_key t) { m_type_info = t; }

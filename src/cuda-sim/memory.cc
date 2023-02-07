@@ -247,7 +247,7 @@ void memory_space_impl<BSIZE>::read_single_block(mem_addr_t blk_idx,
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::read(mem_addr_t addr, size_t length,
                                     void *data) const {
-  //计算当前起始地址所在的被写入数据的内存页的 index 号。
+  //计算当前起始地址所在的被读出数据的内存页的 index 号。
   mem_addr_t index = addr >> m_log2_block_size;
   //看一个例子：
   //    有一个存储器，它的每个内存页的大小为 BSIZE=16字节，则：
@@ -270,7 +270,7 @@ void memory_space_impl<BSIZE>::read(mem_addr_t addr, size_t length,
   } else {
     // slow route for inter-block access
     //跨页读的话，就需要多次读不同页的数据，执行块间的（跨内存页）的慢速访问。
-    //nbytes_remain 即为还剩余的需要写的数据长度，初始时设置为完整的写数据长度 length。
+    //nbytes_remain 即为还剩余的需要读的数据长度，初始时设置为完整的读数据长度 length。
     //dst_offset 是指当前页需要读出数据存入的目的端数据的偏移地址，例如，第一页读出保存到 data 
     //时，该偏移量为0，假设读出长度保存到 data 中的长度为 _length_；换页后的需要再次读出，保存
     //到目的端数据的偏移地址变为0+_length_=_length_。current_addr 为当前读出的全局起始地址，
@@ -282,26 +282,39 @@ void memory_space_impl<BSIZE>::read(mem_addr_t addr, size_t length,
     //由于读出过程存在换页，且不知道究竟会换多少页才能把数据读完，因此这里对[还剩余的需要读的数
     //据长度]循环，直到nbytes_remain变为0，才说明已经把所有数据全读出完成。
     while (nbytes_remain > 0) {
+      //计算current_addr相对当前内存页的起始地址的偏移量。
       unsigned offset = current_addr & (BSIZE - 1);
+      //计算当前起始地址所在的被读数据的内存页的 page 号。
       mem_addr_t page = current_addr >> m_log2_block_size;
+      //access_limit = current_addr相对当前内存页的起始地址的偏移量 + 读长度。
       mem_addr_t access_limit = offset + nbytes_remain;
+      //如果access_limit超过页大小 BSIZE，则需要换页。
       if (access_limit > BSIZE) {
         access_limit = BSIZE;
       }
-
+      //换页前的读出长度为：BSIZE - offset。
       size_t tx_bytes = access_limit - offset;
+      //第 page 号内存页读出数据。从起始地址 current_addr 开始，连续读 tx_bytes 个字节的数据，
+      //将读出的数据放入 data 的 dst_offset 偏移位置。
       read_single_block(page, current_addr, tx_bytes,
                         &((unsigned char *)data)[dst_offset]);
 
       // advance pointers
+      //前进指针。用于指导换页后的数据读。
+      //换页后的需要读出保存的目的端数据的偏移地址变为 src_offset+tx_bytes。
       dst_offset += tx_bytes;
+      //换页后的读出的全局起始地址为 current_addr+tx_bytes。
       current_addr += tx_bytes;
+      //当前页已经读出 tx_bytes 字节长度数据，剩余需读出数据长度为 nbytes_remain-tx_bytes。
       nbytes_remain -= tx_bytes;
     }
     assert(nbytes_remain == 0);
   }
 }
 
+/*
+打印存储中的数据。一般DEBUG用，用到再补充。
+*/
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::print(const char *format, FILE *fout) const {
   typename map_t::const_iterator i_page;
@@ -312,6 +325,9 @@ void memory_space_impl<BSIZE>::print(const char *format, FILE *fout) const {
   }
 }
 
+/*
+DEBUG用，用到再补充。
+*/
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::set_watch(addr_t addr, unsigned watchpoint) {
   m_watchpoints[watchpoint] = addr;

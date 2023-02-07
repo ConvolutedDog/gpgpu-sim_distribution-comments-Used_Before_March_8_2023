@@ -3503,7 +3503,7 @@ void functionalCoreSim::createWarp(unsigned warpId) {
   //当前warp中，首个线程必须是活跃的。
   assert(m_thread[warpId * m_warp_size] != NULL);
   //将该warp的起始PC值（用该warp的首个线程m_thread[warpId * m_warp_size]->get_pc()获取）线程和其线
-  //程掩码发送到SIMT堆栈。
+  //程掩码用于启动SIMT堆栈。
   m_simt_stack[warpId]->launch(m_thread[warpId * m_warp_size]->get_pc(),
                                initialMask);
 

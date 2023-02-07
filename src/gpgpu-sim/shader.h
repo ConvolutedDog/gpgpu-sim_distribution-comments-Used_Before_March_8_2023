@@ -1512,7 +1512,9 @@ class shader_core_config : public core_config {
       max_cta_per_core;  // Limit on number of concurrent CTAs in shader core
   unsigned max_barriers_per_cta;
   char *gpgpu_scheduler_string;
+  //每个线程块或CTA的共享内存大小（默认48KB）。由GPGPU-Sim的-gpgpu_shmem_per_block选项配置。
   unsigned gpgpu_shmem_per_block;
+  //每个CTA的最大寄存器数。由GPGPU-Sim的-gpgpu_registers_per_block选项配置。
   unsigned gpgpu_registers_per_block;
   char *pipeline_widths_string;
   int pipe_widths[N_PIPELINE_STAGES];
@@ -1563,6 +1565,7 @@ class shader_core_config : public core_config {
   int gpgpu_num_int_units;
 
   // Shader core resources
+  //每个Shader Core的寄存器数。并发CTA的限制数量。由GPGPU-Sim的-gpgpu_shader_registers选项配置。
   unsigned gpgpu_shader_registers;
   int gpgpu_warpdistro_shader;
   int gpgpu_warp_issue_shader;

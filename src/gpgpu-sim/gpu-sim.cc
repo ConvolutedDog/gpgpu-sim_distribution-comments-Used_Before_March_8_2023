@@ -762,12 +762,12 @@ the function will wait until all of the threads have completed. Once the threads
 completed, the function will clean up the resources used by the kernel.
 此函数启动kinfo指定的内核。它设置内核的线程块、线程和warp，然后在设备上启动它们。内核启动后，该函数将
 等待所有线程完成。线程完成后，该函数将清理内核使用的资源。
-kernel_info_t类在../abstract_hardware_model.h中定义。
+kernel_info_t类在abstract_hardware_model.h中定义。
 */
 void gpgpu_sim::launch(kernel_info_t *kinfo) {
-  //cta_size是每个线程块中的线程数量
+  //根据内核函数的信息kinfo获取其参数中的每个CTA（线程块）中的线程数。
   unsigned cta_size = kinfo->threads_per_cta();
-  //如果程序的每个线程块中的线程数量 > 每个SIMT Core配置的线程数（由-gpgpu_shader配置），输出错误信
+  //如果程序的每个CTA中的线程数量 > 每个SIMT Core配置的线程数（由-gpgpu_shader配置），输出错误信
   //息
   if (cta_size > m_shader_config->n_thread_per_shader) {
     printf(
@@ -783,7 +783,7 @@ void gpgpu_sim::launch(kernel_info_t *kinfo) {
         "size.\n");
     abort();
   }
-  //m_running_kernels由gpu-sim.h中的`std::vector<kernel_info_t *>`定义，是一组kernel_info_t*
+  //m_running_kernels由gpu-sim.h中的 std::vector<kernel_info_t *> 定义，是一组kernel_info_t*
   //组成的向量，它存储着正在运行的内核的信息。下面对这个向量遍历，找到一个空位，加入新的即将运行的内
   //核kinfo。如果向量的某个位置为NULL或者该位置->done()显示该核函数已完成，则将kinfo加入到此位置。
   unsigned n = 0;

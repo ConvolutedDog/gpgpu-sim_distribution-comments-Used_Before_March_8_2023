@@ -768,7 +768,7 @@ void gpgpu_sim::launch(kernel_info_t *kinfo) {
   //根据内核函数的信息kinfo获取其参数中的每个CTA（线程块）中的线程数。
   unsigned cta_size = kinfo->threads_per_cta();
   //如果程序的每个CTA中的线程数量 > 每个SIMT Core配置的线程数（由-gpgpu_shader配置），输出错误信
-  //息
+  //息。
   if (cta_size > m_shader_config->n_thread_per_shader) {
     printf(
         "Execution error: Shader kernel CTA (block) size is too large for "

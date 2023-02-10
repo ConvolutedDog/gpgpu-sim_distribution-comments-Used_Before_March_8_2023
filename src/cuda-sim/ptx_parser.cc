@@ -287,6 +287,15 @@ void ptx_recognizer::set_variable_type() {
   PTX_PARSE_DPRINTF("set_variable_type space_spec=%s scalar_type_spec=%s",
                     g_ptx_token_decode[g_space_spec.get_type()].c_str(),
                     g_ptx_token_decode[g_scalar_type_spec].c_str());
+  //printf("==>g_scalar_type_spec:%d-%s\n", 
+  //       g_scalar_type_spec, g_ptx_token_decode[g_scalar_type_spec].c_str());
+  //printf("==>g_vector_spec:%d-%s\n", 
+  //       g_vector_spec, g_ptx_token_decode[g_vector_spec].c_str());
+  //printf("==>g_alignment_spec:%d-%s\n", 
+  //       g_alignment_spec, g_ptx_token_decode[g_alignment_spec].c_str());
+  //printf("==>g_extern_spec:%d-%s\n", 
+  //       g_extern_spec, g_ptx_token_decode[g_extern_spec].c_str());
+         
   parse_assert(g_space_spec != undefined_space,
                "variable has no space specification");
   parse_assert(

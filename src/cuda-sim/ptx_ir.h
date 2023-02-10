@@ -1091,21 +1091,25 @@ class ptx_instruction : public warp_inst_t {
   //可以对谓词指令使用不同的测试条件。例如，只有当谓词寄存器$p0中的进位标志位被设置时，才执行下一条指令：
   //        @$p0.cf add.u32 $r2, $r0, $r1;
   bool has_pred() const { return m_pred != NULL; }
-  //
+  //获取谓词。将谓词作为一个 operand_info 对象操作数信息返回。
   operand_info get_pred() const;
+  //???
   bool get_pred_neg() const { return m_neg_pred; }
+  //???
   int get_pred_mod() const { return m_pred_mod; }
+  //返回该指令所在的PTX指令字符串。
   const char *get_source() const { return m_source.c_str(); }
-
+  //???
   const std::list<int> get_scalar_type() const {return m_scalar_type;}
+  //???
   const std::list<int> get_options() const {return m_options;}
 
   typedef std::vector<operand_info>::const_iterator const_iterator;
-
+  //m_operands变量（是一个 std::vector 对象），即当前指令的操作数。返回其迭代开头。
   const_iterator op_iter_begin() const { return m_operands.begin(); }
-
+  //m_operands变量（是一个 std::vector 对象），即当前指令的操作数。返回其迭代结尾。
   const_iterator op_iter_end() const { return m_operands.end(); }
-
+  //
   const operand_info &dst() const {
     assert(!m_operands.empty());
     return m_operands[0];

@@ -1458,30 +1458,51 @@ ptx_instruction::ptx_instruction(
   }
 }
 
+/*
+调用ptx_instruction::print_insn(FILE *fp)，传入参数stdout，打印指令到屏幕。stdin,stdout,stderr就是
+这个fp，不过它是随着计算机系统的开启默认打开的：其中0就是stdin，表示输入流，指从键盘输入；1代表stdout；
+2代表stderr；1，2默认是显示器。
+*/
 void ptx_instruction::print_insn() const {
   print_insn(stdout);
   fflush(stdout);
 }
 
+/*
+传入参数 FILE *fp，打印指令到该文件。
+*/
 void ptx_instruction::print_insn(FILE *fp) const {
   fprintf(fp, "%s", to_string().c_str());
 }
 
+/*
+将该指令转换为一个字符串，并返回该字符串。C++ 库函数 int snprintf(char *str, size_t size, const char 
+*format, ...) 设将可变参数(...)按照 format 格式化成字符串，并将字符串复制到 str 中，size 为要写入的字
+符的最大数目，超过 size 会被截断。
+*/
 std::string ptx_instruction::to_string() const {
   char buf[STR_SIZE];
   unsigned used_bytes = 0;
   if (!is_label()) {
     used_bytes +=
         snprintf(buf + used_bytes, STR_SIZE - used_bytes, " PC=0x%03x ", m_PC);
+        printf("== In ptx_instruction::to_string() !is_label() ==> PC=0x%03x \n", m_PC);
   } else {
     used_bytes +=
         snprintf(buf + used_bytes, STR_SIZE - used_bytes, "                ");
+        printf("== In ptx_instruction::to_string() is_label() ==>  \n");
   }
   used_bytes +=
       snprintf(buf + used_bytes, STR_SIZE - used_bytes, "(%s:%d) %s",
                m_source_file.c_str(), m_source_line, m_source.c_str());
+      printf("== In ptx_instruction::to_string() all ==> (%s:%d) %s \n", 
+             m_source_file.c_str(), m_source_line, m_source.c_str());
   return std::string(buf);
 }
+
+/*
+
+*/
 operand_info ptx_instruction::get_pred() const {
   return operand_info(m_pred, gpgpu_ctx);
 }

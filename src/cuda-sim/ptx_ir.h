@@ -58,10 +58,53 @@ class type_info_key {
     //标志是否已经完成 type_info_key 对象中的各成员变量的初始化。
     m_init = false;
   }
-  
-  //构造函数+初始化成员变量。六个参数为：
-  //  1.memory_space_t space_spec：
-  //  2.int scalar_type_spec：
+  //构造函数，以及初始化成员变量。六个参数为：
+  //  1.memory_space_t space_spec：GPGPU-Sim设置的存储空间的类型有：
+  //    enum _memory_space_t {
+  //      //a. 未定义的空间类型
+  //      undefined_space = 0,
+  //      //b. 寄存器
+  //      reg_space,
+  //      //c. local memory
+  //      local_space,
+  //      //d. shared memory
+  //      shared_space,
+  //      //e. 貌似是 shared static array，其访存的行为与shared memory一致，可以认为其是shared 
+  //      //   memory的一种
+  //      sstarr_space,
+  //      //f. 通用参数存储
+  //      param_space_unclassified,
+  //      //g. 对内核中的所有线程：全局性的，只读的
+  //      param_space_kernel, // global to all threads in a kernel : read-only
+  //      //h. 对某个线程：私有的，可读写的
+  //      param_space_local,  // local to a thread : read-writable
+  //      //i. 常量缓存
+  //      const_space,
+  //      //j. 纹理缓存
+  //      tex_space,
+  //      //k. 渲染曲面 // render surfaces 
+  //      surf_space,
+  //      //l. 全局存储
+  //      global_space,
+  //      //m. 通用存储
+  //      generic_space,
+  //      //n. 指令存储
+  //      instruction_space
+  //    };
+  //  2.int scalar_type_spec：在ptx_tab.h定义的yytokentype中枚举，指的是标量数据类型。例如：
+  //        enum yytokentype
+  //        {
+  //          ......
+  //          U8_TYPE = 307,
+  //          U16_TYPE = 308,
+  //          U32_TYPE = 309,
+  //          U64_TYPE = 310,
+  //          F16_TYPE = 311,
+  //          F32_TYPE = 312,
+  //          F64_TYPE = 313,
+  //          PRED_TYPE = 321,
+  //          ......
+  //        };
   //  3.int vector_spec：
   //  4.int alignment_spec：
   //  5.int extern_spec：

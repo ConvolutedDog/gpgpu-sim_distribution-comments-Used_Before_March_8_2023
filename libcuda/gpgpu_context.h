@@ -27,7 +27,7 @@ class gpgpu_context {
     function_info_sm_next_uid = 1;
     //设置Tensor Core的DEBUG模式关闭。
     debug_tensorcore = 0;
-    //创建CUDA运行时API。
+    //创建CUDA运行时API。 
     api = new cuda_runtime_api(this);
     
     ptxinfo = new ptxinfo_data(this);

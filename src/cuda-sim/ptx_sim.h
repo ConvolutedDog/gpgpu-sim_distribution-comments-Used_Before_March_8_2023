@@ -298,7 +298,7 @@ warp执行。
 1. 解码
     在 shader_core_ctx::decode() 的解码阶段，时序模拟器从功能模拟器中获得指令，给定一个PC。这是通
     过调用 ptx_fetch_inst 函数完成的。
-2. 指令执行 
+2. 指令执行
     1)功能执行：时序模型通过调用 ptx_thread_info 类的 ptx_exec_inst 方法将线程的功能状态提前一个
       指令。这是在 core_t::execute_warp_inst_t 内完成的。时序模拟器传递要执行的指令的动态实例，而
       功能模型则相应地推进线程的状态。

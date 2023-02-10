@@ -966,7 +966,7 @@ struct gpgpu_recon_t {
 };
 
 /*
-单条PTX指令类。
+单条PTX指令类。 
 */
 class ptx_instruction : public warp_inst_t {
  public:

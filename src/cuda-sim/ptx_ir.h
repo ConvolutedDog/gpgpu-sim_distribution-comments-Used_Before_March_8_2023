@@ -1013,7 +1013,10 @@ struct gpgpu_recon_t {
 };
 
 /*
-单条PTX指令类。
+单条PTX指令类。时序仿真中需要的指令数据。每条指令（ptx_instruction）承自 warp_inst_t，包含用于时序和
+功能仿真的数据。 ptx_instruction 在功能仿真时被填充。在这一级之后,程序只需要时序信息,所以它将 ptx_ins
+truction 转为 warp_inst_t（一些数据被释放）用于时序模拟。它持有 warp_id、warp内的活动线程掩码、内存
+访问列表（mem_access_t）和该warp内线程的信息（per_thread_info）。
 */
 class ptx_instruction : public warp_inst_t {
  public:
@@ -1035,8 +1038,8 @@ class ptx_instruction : public warp_inst_t {
   //UID是 Unique Identifier 的缩写，用于标识特定的对象、任务或者线程。它可以用来跟踪对象、任务或者线
   //程的执行，以及收集相关的性能指标。uid() 用于获取当前指令的唯一ID。
   unsigned uid() const { return m_uid; }
-  //获取当前指令的操作码 m_opcode，该操作码是一个 int 类型的值，与 opcodes.def 中定义的操作码对应。例
-  //如， opcodes.def 中定义了：
+  //获取当前指令的操作码 m_opcode，该操作码是一个 int 类型的值，与 opcodes.def 中定义的操作码对应。
+  //例如， opcodes.def 中定义了：
   //    OP_DEF(ABS_OP,abs_impl,"abs",1,1)
   //其操作码为 ABS_OP。
   int get_opcode() const { return m_opcode; }
@@ -1057,7 +1060,7 @@ class ptx_instruction : public warp_inst_t {
   unsigned source_line() const { return m_source_line; }
   //返回m_operands变量（一个 std::vector 对象）的大小，即当前指令操作数的数量。
   unsigned get_num_operands() const { return m_operands.size(); }
-  //下面的函数返回是否含有谓词寄存器，m_pred 是一个 symbol 类的对象。关于谓词指令，可以看下面的PTX指令：
+  //下面的函数返回是否含有谓词寄存器，m_pred 是一个 symbol 类的对象。关于谓词指令，看下面的PTX指令：
   //  1.      asm("{\n\t"
   //  2.          ".reg .s32 b;\n\t"
   //  3.          ".reg .pred p;\n\t"     <======= 声明谓词寄存器p
@@ -1109,12 +1112,29 @@ class ptx_instruction : public warp_inst_t {
   const_iterator op_iter_begin() const { return m_operands.begin(); }
   //m_operands变量（是一个 std::vector 对象），即当前指令的操作数。返回其迭代结尾。
   const_iterator op_iter_end() const { return m_operands.end(); }
-  //
+  //PTX指令一般有0-4个操作数，外加一个可选的判断标志，一般第一个都是目的地址，后面的是源地址，也可以有两
+  //个目的地址，比如：
+  //    setp.lt.s32 p|q, a, b;          // p = (a < b); q = !(a < b);
+  //也可以只有一个目的地址，比如：
+  //    mad.rn.f64 d, a, b, c;          // d = a * b + c
+  //下面函数获取目的操作数。
   const operand_info &dst() const {
     assert(!m_operands.empty());
     return m_operands[0];
   }
-
+  //一般操作码为 CALL_OP 或 CALLP_OP 时，指令的目的地址为调用函数，这时目的地址是函数的地址 func_addr。
+  //    void ptx_recognizer::set_return() {
+  //      parse_assert((g_opcode == CALL_OP || g_opcode == CALLP_OP),
+  //                  "only call can have return value");
+  //      g_operands.front().set_return();
+  //      g_return_var = g_operands.front();
+  //    }
+  //例如，PTX指令对 CALL 操作码指令格式的例子：
+  //  //direct call to named function, func is a symbol
+  //    call{.uni} (ret-param), func, (param-list);
+  //    call{.uni} func, (param-list);
+  //    call{.uni} func;
+  //其中func_addr可以是 operands[0]，也可以是 operands[1]，但此时没有源操作数。
   const operand_info &func_addr() const {
     assert(!m_operands.empty());
     if (!m_operands[0].is_return_var()) {
@@ -1124,22 +1144,20 @@ class ptx_instruction : public warp_inst_t {
       return m_operands[1];
     }
   }
-
+  //同上面的 const operand_info &dst() const{...}。
   operand_info &dst() {
     assert(!m_operands.empty());
     return m_operands[0];
   }
-
+  //根据m_operands的长度，获取至多8个源操作数。
   const operand_info &src1() const {
     assert(m_operands.size() > 1);
     return m_operands[1];
   }
-
   const operand_info &src2() const {
     assert(m_operands.size() > 2);
     return m_operands[2];
   }
-
   const operand_info &src3() const {
     assert(m_operands.size() > 3);
     return m_operands[3];
@@ -1164,7 +1182,7 @@ class ptx_instruction : public warp_inst_t {
     assert(m_operands.size() > 8);
     return m_operands[8];
   }
-
+  //
   const operand_info &operand_lookup(unsigned n) const {
     assert(n < m_operands.size());
     return m_operands[n];

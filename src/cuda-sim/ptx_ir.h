@@ -409,8 +409,12 @@ class symbol_table {
   std::map<std::string, symbol_table *> m_inst_group_symtab;
 };
 
+/*
+一个包含指令源操作数的封装类，可以是寄存器标识符、内存操作数（包括置换模式信息）或即时操作数。
+*/
 class operand_info {
  public:
+  //构造函数。
   operand_info(gpgpu_context *ctx) {
     init(ctx);
     m_is_non_arch_reg = false;
@@ -977,24 +981,74 @@ class ptx_instruction : public warp_inst_t {
                   const std::list<int> &scalar_type, memory_space_t space_spec,
                   const char *file, unsigned line, const char *source,
                   const core_config *config, gpgpu_context *ctx);
-
+  //调用ptx_instruction::print_insn(FILE *fp)，传入参数stdout，打印指令到屏幕。
   void print_insn() const;
+  //传入参数 FILE *fp，打印指令到该文件。
   virtual void print_insn(FILE *fp) const;
+  //将该指令转换为一个字符串，并返回该字符串。
   std::string to_string() const;
+  //返回指令的大小，m_inst_size即为指令的大小，以字节为单位。
   unsigned inst_size() const { return m_inst_size; }
+  //UID是 Unique Identifier 的缩写，用于标识特定的对象、任务或者线程。它可以用来跟踪对象、任务或者线
+  //程的执行，以及收集相关的性能指标。uid() 用于获取当前指令的唯一ID。
   unsigned uid() const { return m_uid; }
+  //获取当前指令的操作码 m_opcode，该操作码是一个 int 类型的值，与 opcodes.def 中定义的操作码对应。例
+  //如， opcodes.def 中定义了：
+  //    OP_DEF(ABS_OP,abs_impl,"abs",1,1)
+  //其操作码为 ABS_OP。
   int get_opcode() const { return m_opcode; }
+  //获取当前指令操作码定义中的字符串，例如上面的 opcodes.def 中的定义中，
+  //    OP_DEF(ABS_OP,abs_impl,"abs",1,1)
+  //其中，"abs"即为g_opcode_string[m_opcode]。
   const char *get_opcode_cstr() const {
+    //当 m_opcode != -1 时为正常指令，当m_opcode == -1时为标签。
     if (m_opcode != -1) {
       return g_opcode_string[m_opcode];
     } else {
       return "label";
     }
   }
+  //返回该指令所在的源文件。
   const char *source_file() const { return m_source_file.c_str(); }
+  //返回该指令所在的源文件的行数。
   unsigned source_line() const { return m_source_line; }
+  //返回m_operands变量（一个 std::vector 对象）的大小，即当前指令操作数的数量。
   unsigned get_num_operands() const { return m_operands.size(); }
+  //下面的函数返回是否含有谓词寄存器，m_pred 是一个 symbol 类的对象。关于谓词指令，可以看下面的PTX指令：
+  //  1.      asm("{\n\t"
+  //  2.          ".reg .s32 b;\n\t"
+  //  3.          ".reg .pred p;\n\t"     <======= 声明谓词寄存器p
+  //  4.          "add.cc.u32 %1, %1, %2;\n\t"
+  //  5.          "addc.s32 b, 0, 0;\n\t"
+  //  6.          "sub.cc.u32 %0, %0, %2;\n\t"
+  //  7.          "subc.cc.u32 %1, %1, 0;\n\t"
+  //  8.          "subc.s32 b, b, 0;\n\t"
+  //  9.          "setp.eq.s32 p, b, 1;\n\t"     <======= 给谓词变量绑定具体谓词逻辑
+  //  10.         "@p add.cc.u32 %0, %0, 0xffffffff;\n\t"
+  //  11.         "@p addc.u32 %1, %1, 0;\n\t"
+  //  12.         "}"
+  //  13.         : "+r"(x[0]), "+r"(x[1])
+  //  14.         : "r"(x[2]));
+  //谓词的声明使用 .pred 表示，例如第3行声明了谓词寄存器p。step指令给谓词变量绑定具体谓词逻辑，例如
+  //第9行 "setp.eq.s32 p, b, 1"。
+  //谓词的使用方法/指令格式为：
+  //        @p opcode;
+  //        @p opcode a;
+  //        @p opcode d, a;
+  //        @p opcode d, a, b;
+  //        @p opcode d, a, b, c;
+  //最左边的 @p是可选的guard predicate，即根据对应谓词结果选择是否执行该条指令。
+  //谓词寄存器本质上是虚拟的寄存器，用于处理PTX中的分支（类比其他ISA的条件跳转指令beq等）。
+  //SASS指令使用4位条件代码来指定更复杂的谓词行为，而不是PTX中的正常真假谓词系统。因此，PTXPlus使用
+  //相同的4位谓词系统。GPGPU-Sim使用decuda的谓词转换表来模拟PTXPlus指令。谓词寄存器的最高位表示溢出
+  //标志，后跟进位标志和符号标志。最后也是最低的位是零标志。单独的条件代码可以存储在单独的谓词寄存器中，
+  //指令可以指示要使用或修改哪个谓词寄存器。以下指令将寄存器$r0中的值与寄存器$r1中的值相加，并将结果存
+  //储在寄存器$r2中。同时，在谓词寄存器$p0中设置适当的标志：
+  //        add.u32 $p0|$r2, $r0, $r1;
+  //可以对谓词指令使用不同的测试条件。例如，只有当谓词寄存器$p0中的进位标志位被设置时，才执行下一条指令：
+  //        @$p0.cf add.u32 $r2, $r0, $r1;
   bool has_pred() const { return m_pred != NULL; }
+  //
   operand_info get_pred() const;
   bool get_pred_neg() const { return m_neg_pred; }
   int get_pred_mod() const { return m_pred_mod; }
@@ -1095,13 +1149,27 @@ class ptx_instruction : public warp_inst_t {
   }
   basic_block_t *get_bb() { return m_basic_block; }
   void set_m_instr_mem_index(unsigned index) { m_instr_mem_index = index; }
+  //设置当前指令的 PC 值，指令处理过程中，为每条指令分配一个唯一的 PC 并作为参数传入该函数，该函数设置
+  //当前指令的 PC 值：m_PC = PC。
   void set_PC(addr_t PC) { m_PC = PC; }
+  //获取当前指令的 PC 值，返回 m_PC。
   addr_t get_PC() const { return m_PC; }
 
   unsigned get_m_instr_mem_index() { return m_instr_mem_index; }
   unsigned get_cmpop() const { return m_compare_op; }
+  //获取该条指令的标签，返回的标签是一个 symbol 对象。
   const symbol *get_label() const { return m_label; }
+
+  //is_label() 用于判断指令pI是否含有标签。label即为例如PTX指令块中的$L__BB0_6等：
+  //  01.$L__BB0_6: <---- label
+  //  02.  .pragma "nounroll";
+  //  03.  ld.global.u32 %r28, [%rd32];
+  //  04.  ...
+  //  ...  ...
+  //  12.  @%p5 bra $L__BB0_6; <---- label = $L__BB0_6
   bool is_label() const {
+    //m_label 是一个 symbol 类的对象，储存了该条指令的标签，例如上述的 $L__BB0_6。如果 m_label 不为
+    //空则代表该条指令是含有标签的。
     if (m_label) {
       assert(m_opcode == -1);
       return true;

@@ -326,6 +326,10 @@ class symbol {
   std::list<operand_info> m_initializer;
 };
 
+/*
+符号表。包含PTX中一个内存位置的文本表示（e.g., "%r2", "input_data", etc...）到一个包含数据类型和位置
+信息的符号对象的映射。
+*/
 class symbol_table {
  public:
   symbol_table();

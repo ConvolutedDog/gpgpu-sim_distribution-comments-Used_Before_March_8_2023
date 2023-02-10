@@ -44,6 +44,12 @@ typedef void *yyscan_t;
 
 #define STR_SIZE 1024
 
+/*
+传入参数 PC 值，获取该 PC 值对应的PTX指令，该指令为 ptx_instruction 类的对象。s_g_pc_to_insn 如下定义：
+    std::vector<ptx_instruction *>
+          s_g_pc_to_insn;  // a direct mapping from PC to instruction
+是 PC 值 --> ptx_instruction 的映射。
+*/
 const ptx_instruction *gpgpu_context::pc_to_instruction(unsigned pc) {
   if (pc < s_g_pc_to_insn.size())
     return s_g_pc_to_insn[pc];

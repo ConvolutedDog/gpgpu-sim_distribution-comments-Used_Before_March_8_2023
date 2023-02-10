@@ -9,7 +9,7 @@
 #include "cuda_api_object.h"
 
 /*
-初始化GPGPU的上下文信息。
+GPGPU的上下文信息。
 */
 class gpgpu_context {
  public:

@@ -1164,6 +1164,7 @@ class warp_inst_t : public inst_t {
     //指示GPU是否应该执行原子操作。它用于确保多个线程可以访问和修改共享数据，而不会导致竞争条件或数据损坏。
     should_do_atomic = true;
   }
+  //析构函数。
   virtual ~warp_inst_t() {}
 
   // modifiers

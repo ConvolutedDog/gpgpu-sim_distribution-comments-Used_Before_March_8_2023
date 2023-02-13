@@ -206,6 +206,10 @@ gpgpu_t::gpgpu_t(const gpgpu_functional_sim_config &config, gpgpu_context *ctx)
   gpu_tot_sim_cycle = 0;
 }
 
+/*
+比如地址为 'b11011，line_size=word_size=4字节='b00100，~(line_size-1)='b11100，address & ~(line_
+size-1)='b11011 & 'b11100='b11000。返回地址 address 所在的那个字的首个字节数据的地址。
+*/
 address_type line_size_based_tag_func(new_addr_type address,
                                       new_addr_type line_size) {
   // gives the tag for an address based on a given line size
@@ -419,14 +423,17 @@ void warp_inst_t::generate_mem_accesses() {
           // across kernel launches assert( addr < m_config->gpgpu_shmem_size );
           //shmem_bank_func(...)：根据数据地址，判断其位于哪一个shared memory的Bank。
           unsigned bank = m_config->shmem_bank_func(addr);
-          //
+          //返回地址 address 所在的那个字的首个字节数据的地址。
           new_addr_type word =
               line_size_based_tag_func(addr, m_config->WORD_SIZE);
+          //对 bank 个Bank的，以word为起始地址的数据访存。该地址的bank_accs增加1。
           bank_accs[bank][word]++;
         }
-
+        // Limit shared memory to do one broadcast per cycle (default on).
+        //将共享内存限制为每个周期执行一次广播（默认设置为打开）。
         if (m_config->shmem_limited_broadcast) {
           // step 2: look for and select a broadcast bank/word if one occurs
+          //步骤2：查找并选择广播Bank/Word
           bool broadcast_detected = false;
           new_addr_type broadcast_word = (new_addr_type)-1;
           unsigned broadcast_bank = (unsigned)-1;

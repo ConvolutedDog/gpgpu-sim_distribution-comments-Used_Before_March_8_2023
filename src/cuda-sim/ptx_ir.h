@@ -1190,8 +1190,41 @@ class ptx_instruction : public warp_inst_t {
     assert(n < m_operands.size());
     return m_operands[n];
   }
+  //
   bool has_return() const { return m_return_var.is_valid(); }
-
+  //返回存储空间信息。存储空间的信息，如存储空间的类型和该存储空间的Bank的数量。GPGPU-Sim设置的存储空间
+  //的类型有：
+  //  enum _memory_space_t {
+  //    //1. 未定义的空间类型
+  //    undefined_space = 0,
+  //    //2. 寄存器
+  //    reg_space,
+  //    //3. local memory
+  //    local_space,
+  //    //4. shared memory
+  //    shared_space,
+  //    //5. 貌似是 shared static array，其访存的行为与shared memory一致，可以认为其是shared 
+  //    //   memory的一种
+  //    sstarr_space,
+  //    //6. 通用参数存储
+  //    param_space_unclassified,
+  //    //7. 对内核中的所有线程：全局性的，只读的
+  //    param_space_kernel, // global to all threads in a kernel : read-only
+  //    //8. 对某个线程：私有的，可读写的
+  //    param_space_local,  // local to a thread : read-writable
+  //    //9. 常量缓存
+  //    const_space,
+  //    //10.纹理缓存
+  //    tex_space,
+  //    //11.渲染曲面 // render surfaces 
+  //    surf_space,
+  //    //12.全局存储
+  //    global_space,
+  //    //13.通用存储
+  //    generic_space,
+  //    //14.指令存储
+  //    instruction_space
+  //  };
   memory_space_t get_space() const { return m_space_spec; }
   unsigned get_vector() const { return m_vector_spec; }
   unsigned get_atomic() const { return m_atomic_spec; }

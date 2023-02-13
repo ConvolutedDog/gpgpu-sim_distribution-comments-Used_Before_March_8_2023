@@ -424,6 +424,7 @@ class core_config {
 // bounded stack that implements simt reconvergence using pdom mechanism from
 // MICRO'07 paper
 const unsigned MAX_WARP_SIZE = 32;
+//用于在处理一个warp内的线程分支，标记每个线程是否执行某个分支。
 typedef std::bitset<MAX_WARP_SIZE> active_mask_t;
 #define MAX_WARP_SIZE_SIMT_STACK MAX_WARP_SIZE
 typedef std::bitset<MAX_WARP_SIZE_SIMT_STACK> simt_mask_t;
@@ -792,9 +793,11 @@ class memory_space_t {
 };
 
 const unsigned MAX_MEMORY_ACCESS_SIZE = 128;
+//用于标记一次访存操作中的数据字节掩码，MAX_MEMORY_ACCESS_SIZE设置为128，即每次访存最大数据128字节。
 typedef std::bitset<MAX_MEMORY_ACCESS_SIZE> mem_access_byte_mask_t;
 const unsigned SECTOR_CHUNCK_SIZE = 4;  // four sectors
 const unsigned SECTOR_SIZE = 32;        // sector is 32 bytes width
+//用于标记一次访存操作中的扇区掩码，4个扇区，每个扇区32个字节数据。
 typedef std::bitset<SECTOR_CHUNCK_SIZE> mem_access_sector_mask_t;
 #define NO_PARTIAL_WRITE (mem_access_byte_mask_t())
 
@@ -836,17 +839,53 @@ enum cache_operator_type {
   CACHE_WRITE_THROUGH  // .wt
 };
 
+/*
+包含时序模拟器中每个内存访问的信息。该类包含内存访问的类型、请求的地址、数据的大小以及访问内存的warp的活
+动掩码等信息。该类被用作mem_fetch类的参数之一，该类基本上为每个内存访问实例化。这个类是用于两个不同级别
+的内存之间的接口，并将两者互连。
+*/
 class mem_access_t {
  public:
+  //构造函数。mem_access_t类有一个私有的 gpgpu_context *gpgpu_ctx 对象，初始化该对象。
   mem_access_t(gpgpu_context *ctx) { init(ctx); }
+  //构造函数。
+  //new_addr_type定义：typedef unsigned long long new_addr_type;
   mem_access_t(mem_access_type type, new_addr_type address, unsigned size,
                bool wr, gpgpu_context *ctx) {
+    //初始化gpgpu_context *gpgpu_ctx 对象。
     init(ctx);
+    //mem_access_type定义了在时序模拟器中对不同类型的存储器进行不同的访存类型：
+    //    MA_TUP(GLOBAL_ACC_R), 从global memory读
+    //    MA_TUP(LOCAL_ACC_R), 从local memory读
+    //    MA_TUP(CONST_ACC_R), 从常量缓存读
+    //    MA_TUP(TEXTURE_ACC_R), 从纹理缓存读
+    //    MA_TUP(GLOBAL_ACC_W), 向global memory写
+    //    MA_TUP(LOCAL_ACC_W), 向local memory写
+    //    MA_TUP(L1_WRBK_ACC), L1缓存write back
+    //    MA_TUP(L2_WRBK_ACC), L2缓存write back
+    //    MA_TUP(INST_ACC_R), 从指令缓存读
+    //    MA_TUP(L1_WR_ALLOC_R), L1缓存write-allocate（对cache写不命中，将主存中块调入cache，写入
+    //                           该cache块）
+    //    MA_TUP(L2_WR_ALLOC_R), L2缓存write-allocate
+    //    MA_TUP(NUM_MEM_ACCESS_TYPE), 存储器访问的类型总数
     m_type = type;
+    //访存的地址。
     m_addr = address;
+    //访存的数据大小，以字节为单位。
     m_req_size = size;
+    //该访存是写/读，1-写，0-读。
     m_write = wr;
   }
+  //构造函数。
+  //active_mask_t 活跃掩码定义：
+  //    typedef std::bitset<MAX_WARP_SIZE> active_mask_t; 
+  //用于在处理一个warp内的线程分支，标记每个线程是否执行某个分支。
+  //mem_access_byte_mask_t 访存数据字节掩码定义：
+  //    typedef std::bitset<MAX_MEMORY_ACCESS_SIZE> mem_access_byte_mask_t;
+  //用于标记一次访存操作中的数据字节掩码，MAX_MEMORY_ACCESS_SIZE设置为128，即每次访存最大数据128字节。
+  //mem_access_sector_mask_t 扇区掩码定义：
+  //    typedef std::bitset<SECTOR_CHUNCK_SIZE> mem_access_sector_mask_t;
+  //用于标记一次访存操作中的扇区掩码，4个扇区，每个扇区32个字节数据。
   mem_access_t(mem_access_type type, new_addr_type address, unsigned size,
                bool wr, const active_mask_t &active_mask,
                const mem_access_byte_mask_t &byte_mask,
@@ -860,16 +899,24 @@ class mem_access_t {
     m_req_size = size;
     m_write = wr;
   }
-
+  //返回访存地址。
   new_addr_type get_addr() const { return m_addr; }
+  //设置访存地址。
   void set_addr(new_addr_type addr) { m_addr = addr; }
+  //返回访存数据大小，以字节为单位。
   unsigned get_size() const { return m_req_size; }
+  //返回访存的线程活跃掩码。
   const active_mask_t &get_warp_mask() const { return m_warp_mask; }
+  //返回该访存是写/读，1-写，0-读。
   bool is_write() const { return m_write; }
+  //返回对存储器进行的访存类型，见构造函数注释。
   enum mem_access_type get_type() const { return m_type; }
+  //返回访存的数据字节掩码。
   mem_access_byte_mask_t get_byte_mask() const { return m_byte_mask; }
+  //返回访存的扇区掩码。
   mem_access_sector_mask_t get_sector_mask() const { return m_sector_mask; }
 
+  //将访存的 地址、store或load、数据大小、访存类型打印到文件。
   void print(FILE *fp) const {
     fprintf(fp, "addr=0x%llx, %s, size=%u, ", m_addr,
             m_write ? "store" : "load ", m_req_size);
@@ -911,14 +958,21 @@ class mem_access_t {
 
  private:
   void init(gpgpu_context *ctx);
-
+  //该次访存操作的唯一ID。
   unsigned m_uid;
+  //访存地址。
   new_addr_type m_addr;  // request address
+  //该访存是写/读，1-写，0-读。
   bool m_write;
+  //访存数据大小，以字节为单位。
   unsigned m_req_size;  // bytes
+  //对不同类型的存储器进行的访存类型，见构造函数注释。
   mem_access_type m_type;
+  //访存的线程活跃掩码。
   active_mask_t m_warp_mask;
+  //访存的数据字节掩码。
   mem_access_byte_mask_t m_byte_mask;
+  //访存的扇区掩码。
   mem_access_sector_mask_t m_sector_mask;
 };
 

@@ -412,11 +412,14 @@ void warp_inst_t::generate_mem_accesses() {
              thread < (subwarp + 1) * subwarp_size; thread++) {
           //如果该线程非活跃，则跳出线程循环，转到下个线程。
           if (!active(thread)) continue;
-          //
+          //m_per_scalar_thread定义：
+          //    std::vector<per_thread_info> m_per_scalar_thread;
           new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
           // FIXME: deferred allocation of shared memory should not accumulate
           // across kernel launches assert( addr < m_config->gpgpu_shmem_size );
+          //shmem_bank_func(...)：根据数据地址，判断其位于哪一个shared memory的Bank。
           unsigned bank = m_config->shmem_bank_func(addr);
+          //
           new_addr_type word =
               line_size_based_tag_func(addr, m_config->WORD_SIZE);
           bank_accs[bank][word]++;

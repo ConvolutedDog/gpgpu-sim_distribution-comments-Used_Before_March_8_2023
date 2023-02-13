@@ -14,10 +14,11 @@ GPGPU的上下文信息。
 class gpgpu_context {
  public:
   gpgpu_context() {
-    // 全局文件符号表设置为空。symbol_table 类在ptx_ir.h中定义。
+    //全局文件符号表设置为空。symbol_table 类在ptx_ir.h中定义。
     g_global_allfiles_symbol_table = NULL;
-    
+    //全局变量，用于跟踪每个SM在共享内存中访问的下一个字节的偏移量。
     sm_next_access_uid = 0;
+    //
     warp_inst_sm_next_uid = 0;
     operand_info_sm_next_uid = 1;
     kernel_info_m_next_uid = 1;

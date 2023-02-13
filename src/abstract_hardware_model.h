@@ -1130,20 +1130,38 @@ class warp_inst_t : public inst_t {
   warp_inst_t() {
     //每条指令都有一个唯一ID。
     m_uid = 0;
+    //m_empty是一个标志变量，用于表示当前warp_inst_t类中的指令是否为空。如果指令为空，则m_empty置为true，
+    //否则置为false。warp_inst_t指令初始化时，设置为空。
     m_empty = true;
+    //m_config是GPU Shader Core的配置。
     m_config = NULL;
   }
+  //构造函数。
   warp_inst_t(const core_config *config) {
     m_uid = 0;
     assert(config->warp_size <= MAX_WARP_SIZE);
+    //Shader Core的配置。
     m_config = config;
+    //m_empty是一个标志变量，用于表示当前warp_inst_t类中的指令是否为空。如果指令为空，则m_empty置为true，
+    //否则置为false。warp_inst_t指令初始化时，设置为空。
     m_empty = true;
+    //m_isatomic变量是一个布尔值，用于指示指令是否为原子操作（atomic operation）。原子操作是一种特殊的指
+    //令，它可以保证在同一时间只有一个线程执行该指令，从而避免多个线程之间的竞争。
     m_isatomic = false;
+    //
     m_per_scalar_thread_valid = false;
+    //代表是否已经生成访存操作，warp_inst_t指令初始化时，设置为false；生成访存操作后，设置为true。
     m_mem_accesses_created = false;
+    //
     m_cache_hit = false;
+    //在ptx_ir.h中：API为vprintf时，if (fname == "vprintf") {m_is_printf = true;}
     m_is_printf = false;
+    //CDP指的是Cuda Dynamic Parallelism，在ptx_ir.h中：
+    //  API为cudaStreamCreateWithFlags时，if (fname == "cudaStreamCreateWithFlags") m_is_cdp = 1;
+    //  API为cudaGetParameterBufferV2时，if (fname == "cudaGetParameterBufferV2") m_is_cdp = 2;
+    //  API为cudaLaunchDeviceV2时，if (fname == "cudaLaunchDeviceV2") m_is_cdp = 4;
     m_is_cdp = 0;
+    //指示GPU是否应该执行原子操作。它用于确保多个线程可以访问和修改共享数据，而不会导致竞争条件或数据损坏。
     should_do_atomic = true;
   }
   virtual ~warp_inst_t() {}

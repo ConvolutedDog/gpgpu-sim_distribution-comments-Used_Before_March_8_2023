@@ -402,6 +402,7 @@ class core_config {
   bool shmem_limited_broadcast;
   static const address_type WORD_SIZE = 4;
   unsigned num_shmem_bank;
+  //根据数据地址，判断其位于哪一个shared memory的Bank。
   unsigned shmem_bank_func(address_type addr) const {
     return ((addr / WORD_SIZE) % num_shmem_bank);
   }
@@ -1329,6 +1330,8 @@ class warp_inst_t : public inst_t {
         memreqaddr[i] = 0;
     }
     dram_callback_t callback;
+    //MAX_ACCESSES_PER_INSN_PER_THREAD为单个线程中允许的最大访存次数。设置为8。
+    //memreqaddr[]存储了单条指令的所有访存地址。
     new_addr_type
         memreqaddr[MAX_ACCESSES_PER_INSN_PER_THREAD];  // effective address,
                                                        // upto 8 different
@@ -1337,6 +1340,7 @@ class warp_inst_t : public inst_t {
                                                        // of 4B each)
   };
   bool m_per_scalar_thread_valid;
+  //m_per_scalar_thread是线程信息的向量，每个warp有一个m_per_scalar_thread。
   std::vector<per_thread_info> m_per_scalar_thread;
   bool m_mem_accesses_created;
   std::list<mem_access_t> m_accessq;

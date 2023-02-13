@@ -427,14 +427,18 @@ void warp_inst_t::generate_mem_accesses() {
           new_addr_type word =
               line_size_based_tag_func(addr, m_config->WORD_SIZE);
           //对 bank 个Bank的，以word为起始地址的数据访存。该地址的bank_accs增加1。
+          //bank_accs是一个三维的map，index1是bank号，index1指向的是std::map<new_addr_type, unsigned>
+          //的value。该value的index是new_addr_type的地址，实际保存的是 address 所在的那个字的首个字节数
+          //据的地址，然后这个地址指向的value是[访存的次数]。
           bank_accs[bank][word]++;
         }
         // Limit shared memory to do one broadcast per cycle (default on).
         //将共享内存限制为每个周期执行一次广播（默认设置为打开）。
         if (m_config->shmem_limited_broadcast) {
           // step 2: look for and select a broadcast bank/word if one occurs
-          //步骤2：查找并选择广播Bank/Word
+          //步骤2：查找并选择广播Bank/Word。
           bool broadcast_detected = false;
+          //
           new_addr_type broadcast_word = (new_addr_type)-1;
           unsigned broadcast_bank = (unsigned)-1;
           std::map<unsigned, std::map<new_addr_type, unsigned> >::iterator b;

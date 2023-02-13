@@ -51,6 +51,9 @@ enum mf_type {
 #undef MF_TUP_END
 
 class memory_config;
+/*
+mem_fetch定义了一个模拟内存请求的通信结构。
+*/
 class mem_fetch {
  public:
   mem_fetch(const mem_access_t &access, const warp_inst_t *inst,

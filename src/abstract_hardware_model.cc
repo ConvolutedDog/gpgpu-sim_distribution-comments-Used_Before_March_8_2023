@@ -46,6 +46,7 @@ void mem_access_t::init(gpgpu_context *ctx) {
   m_addr = 0;
   m_req_size = 0;
 }
+
 void warp_inst_t::issue(const active_mask_t &mask, unsigned warp_id,
                         unsigned long long cycle, int dynamic_warp_id,
                         int sch_id) {

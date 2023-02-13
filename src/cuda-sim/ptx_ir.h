@@ -123,7 +123,10 @@ class type_info_key {
     m_array_dim = array_dim;
     m_is_function = 0;
   }
+  //设置一个类型信息关键字（type_info_key）是否是一个函数。它可以用于检测函数是否已被定义，以及函数的参
+  //数类型是否正确。
   void set_is_func() {
+    //检测当前type_info_key对象是否已经初始化过。
     assert(!m_init);
     m_init = true;
     m_space_spec = undefined_space;

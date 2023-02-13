@@ -374,6 +374,9 @@ class kernel_info_t {
                                  // counted in the gpu_cycle
 };
 
+/*
+Shader Core配置信息类。
+*/
 class core_config {
  public:
   core_config(gpgpu_context *ctx) {
@@ -1114,10 +1117,18 @@ enum divergence_support_t { POST_DOMINATOR = 1, NUM_SIMD_MODEL };
 
 const unsigned MAX_ACCESSES_PER_INSN_PER_THREAD = 8;
 
+/*
+时序仿真中需要的指令数据。每条指令（ptx_instruction）都继承自warp_inst_t，包含用于时序和功能仿真的数据。
+ptx_instruction在功能仿真时被填充。在这之后，程序只需要时序信息，所以它将ptx_instruction转为warp_inst_t
+（一些数据被释放）用于时序模拟。它持有warp_id、warp内的活动线程掩码、内存访问列表（mem_access_t）和该warp
+内线程的信息（per_thread_info）。
+*/
 class warp_inst_t : public inst_t {
  public:
   // constructors
+  //构造函数。
   warp_inst_t() {
+    //每条指令都有一个唯一ID。
     m_uid = 0;
     m_empty = true;
     m_config = NULL;

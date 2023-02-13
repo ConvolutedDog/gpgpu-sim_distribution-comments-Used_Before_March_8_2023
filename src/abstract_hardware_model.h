@@ -399,6 +399,8 @@ class core_config {
   int gpgpu_coalesce_arch;
 
   // shared memory bank conflict checking parameters
+  // Limit shared memory to do one broadcast per cycle (default on).
+  //将共享内存限制为每个周期执行一次广播（默认设置为打开）。
   bool shmem_limited_broadcast;
   static const address_type WORD_SIZE = 4;
   unsigned num_shmem_bank;

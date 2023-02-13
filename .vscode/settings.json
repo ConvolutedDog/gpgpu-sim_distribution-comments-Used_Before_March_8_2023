@@ -25,6 +25,10 @@
         "shared_mutex": "cpp",
         "sstream": "cpp",
         "streambuf": "cpp",
-        "memory_resource": "cpp"
+        "memory_resource": "cpp",
+        "ios": "cpp",
+        "istream": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp"
     }
 }

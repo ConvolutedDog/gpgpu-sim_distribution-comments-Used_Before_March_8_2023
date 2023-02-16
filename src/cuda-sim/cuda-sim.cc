@@ -3658,6 +3658,9 @@ void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier,
   if (!m_warpAtBarrier[i] && m_liveThreadCount[i] > 0) allAtBarrier = false;
 }
 
+/*
+依据PC值获取该PC对应指令在PTX指令中的行号。
+*/
 unsigned gpgpu_context::translate_pc_to_ptxlineno(unsigned pc) {
   // this function assumes that the kernel fits inside a single PTX file
   // function_info *pFunc = g_func_info; // assume that the current kernel is
@@ -3669,7 +3672,7 @@ unsigned gpgpu_context::translate_pc_to_ptxlineno(unsigned pc) {
 }
 
 // ptxinfo parser
-
+//没有使用到。
 extern std::map<unsigned, const char *> get_duplicate();
 
 static char *g_ptxinfo_kname = NULL;

@@ -1297,6 +1297,7 @@ void core_t::execute_warp_inst_t(warp_inst_t &inst, unsigned warpId) {
   }
 }
 
+
 bool core_t::ptx_thread_done(unsigned hw_thread_id) const {
   return ((m_thread[hw_thread_id] == NULL) ||
           m_thread[hw_thread_id]->is_done());

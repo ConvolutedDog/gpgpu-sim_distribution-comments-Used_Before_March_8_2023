@@ -539,17 +539,20 @@ void warp_inst_t::generate_mem_accesses() {
       break;
     }
 
-    case tex_space:
+    case tex_space: //纹理缓存访存操作
+      //gpgpu_cache_texl1_linesize：纹理缓存线大小（用于确定内存访问次数）。
       cache_block_size = m_config->gpgpu_cache_texl1_linesize;
       break;
-    case const_space:
-    case param_space_kernel:
+    case const_space:        //常量缓存访存操作
+    case param_space_kernel: //参数空间访存操作（对内核中的所有线程是全局性、只读的（参数一般放在常量缓存））
+      //gpgpu_cache_constl1_linesize：常量缓存线大小（用于确定内存访问次数）。
       cache_block_size = m_config->gpgpu_cache_constl1_linesize;
       break;
 
-    case global_space:
-    case local_space:
-    case param_space_local:
+    case global_space:      //global memory访存操作
+    case local_space:       //local memory访存操作
+    case param_space_local: //local param memory访存操作
+      //gpgpu_coalesce_arch：片外存储器请求架构参数。V100 GPU = 60。
       if (m_config->gpgpu_coalesce_arch >= 13) {
         if (isatomic())
           memory_coalescing_arch_atomic(is_write, access_type);

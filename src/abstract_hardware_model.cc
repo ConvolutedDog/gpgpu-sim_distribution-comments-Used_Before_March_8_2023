@@ -436,30 +436,42 @@ void warp_inst_t::generate_mem_accesses() {
         //将共享内存限制为每个周期执行一次广播（默认设置为打开）。
         if (m_config->shmem_limited_broadcast) {
           // step 2: look for and select a broadcast bank/word if one occurs
-          //步骤2：查找并选择广播Bank/Word。
+          //步骤2：查找并选择广播Bank/Word，即查找bank_accs[bank][word]中可广播的两层索引。可广播即为：
+          //bank_accs[bank][word]指向的 [访存的次数]>1。
+          //broadcast_detected代表是否检测到可广播数据的地址的标志。
           bool broadcast_detected = false;
-          //
+          //bank_accs[bank][word]中可广播数据地址的index2。
           new_addr_type broadcast_word = (new_addr_type)-1;
+          //bank_accs[bank][word]中可广播数据地址的index1。
           unsigned broadcast_bank = (unsigned)-1;
           std::map<unsigned, std::map<new_addr_type, unsigned> >::iterator b;
           for (b = bank_accs.begin(); b != bank_accs.end(); b++) {
+            //b->first = bank_accs[bank][word]中可广播数据的index1，bank号。
             unsigned bank = b->first;
             std::map<new_addr_type, unsigned> &access_set = b->second;
             std::map<new_addr_type, unsigned>::iterator w;
             for (w = access_set.begin(); w != access_set.end(); ++w) {
+              //w->second = bank_accs[bank][word]指向的[访存的次数]。
               if (w->second > 1) {
                 // found a broadcast
+                //找到一个可广播的地址。
+                //设置已经检测到可广播数据的地址的标志为 True。
                 broadcast_detected = true;
+                //bank号。
                 broadcast_bank = bank;
+                //广播数据的地址。
                 broadcast_word = w->first;
+                //找到一个可广播的地址后，跳出该层循环。
                 break;
               }
             }
+            //shmem_limited_broadcast将共享内存限制为每个周期执行一次广播，因此找到一个可广播后即跳出。
             if (broadcast_detected) break;
           }
 
           // step 3: figure out max bank accesses performed, taking account of
           // broadcast case
+          //步骤3：考虑广播情况，计算执行的最大Bank访问数（max_bank_accesses）。
           unsigned max_bank_accesses = 0;
           for (b = bank_accs.begin(); b != bank_accs.end(); b++) {
             unsigned bank_accesses = 0;

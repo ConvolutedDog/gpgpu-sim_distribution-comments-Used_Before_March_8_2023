@@ -396,6 +396,7 @@ class core_config {
   class gpgpu_context *gpgpu_ctx;
 
   // off-chip memory request architecture parameters
+  //片外存储器请求架构参数。
   int gpgpu_coalesce_arch;
 
   // shared memory bank conflict checking parameters
@@ -418,7 +419,9 @@ class core_config {
 
   // texture and constant cache line sizes (used to determine number of memory
   // accesses)
+  //纹理缓存线大小（用于确定内存访问次数）。
   unsigned gpgpu_cache_texl1_linesize;
+  //常量缓存线大小（用于确定内存访问次数）。
   unsigned gpgpu_cache_constl1_linesize;
 
   unsigned gpgpu_max_insn_issue_per_warp;

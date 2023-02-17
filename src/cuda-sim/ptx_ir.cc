@@ -1513,6 +1513,9 @@ operand_info ptx_instruction::get_pred() const {
   return operand_info(m_pred, gpgpu_ctx);
 }
 
+/*
+function_info的构造函数。
+*/
 function_info::function_info(int entry_point, gpgpu_context *ctx) {
   gpgpu_ctx = ctx;
   m_uid = (gpgpu_ctx->function_info_sm_next_uid)++;
@@ -1528,6 +1531,7 @@ function_info::function_info(int entry_point, gpgpu_context *ctx) {
   m_kernel_info.smem = 0;
   m_local_mem_framesize = 0;
   m_args_aligned_size = -1;
+  //初始化寻找后支配者完成状态为 False。
   pdom_done = false;  // initialize it to false
 }
 

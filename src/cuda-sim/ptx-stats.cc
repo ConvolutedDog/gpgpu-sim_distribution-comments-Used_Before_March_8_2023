@@ -189,6 +189,7 @@ void ptx_stats::ptx_file_line_stats_add_dram_traffic(unsigned pc,
 // attribute the number of shared memory access cycles to a ptx instruction
 // counts both the number of warps doing shared memory access and the number of
 // cycles involved
+//将共享内存访问周期的数量归因于ptx指令，计算执行共享内存访问的warp个数和所涉及的周期数。
 void ptx_stats::ptx_file_line_stats_add_smem_bank_conflict(
     unsigned pc, unsigned n_way_bkconflict) {
   const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);

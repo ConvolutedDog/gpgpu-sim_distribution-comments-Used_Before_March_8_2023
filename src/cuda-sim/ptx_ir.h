@@ -1185,12 +1185,12 @@ class ptx_instruction : public warp_inst_t {
     assert(m_operands.size() > 8);
     return m_operands[8];
   }
-  //
+  //传入参数 n，返回操作数列表 m_operands 中的第 n 个操作数。
   const operand_info &operand_lookup(unsigned n) const {
     assert(n < m_operands.size());
     return m_operands[n];
   }
-  //
+  //返回是否该条指令有[返回值]操作数。
   bool has_return() const { return m_return_var.is_valid(); }
   //返回存储空间信息。存储空间的信息，如存储空间的类型和该存储空间的Bank的数量。GPGPU-Sim设置的存储空间
   //的类型有：
@@ -1226,10 +1226,14 @@ class ptx_instruction : public warp_inst_t {
   //    instruction_space
   //  };
   memory_space_t get_space() const { return m_space_spec; }
+  //
   unsigned get_vector() const { return m_vector_spec; }
   unsigned get_atomic() const { return m_atomic_spec; }
 
+  //
   int get_wmma_type() const { return m_wmma_type; }
+  //warp中的每一个线程都持有矩阵的一部分。warp中线程加载的碎片的分布是未指定的，并且依赖于目标体系结构，
+  //因此矩阵中碎片的身份也是未指定的并且依赖于对象体系结构。如果基础矩阵的形状、布局和元素类型匹配，则wmma操作返回的片段可以用作另一个wmma操作的操作数。由于片段布局依赖于体系结构，如果两个函数链接在一起，但针对不同的链接兼容SM体系结构编译，则使用一个函数中的wmma操作返回的片段作为不同函数中wmma操作的操作数可能无法按预期工作。注意，将wmma片段传递给具有弱链接的函数是不安全的，因为在链接时对此类函数的引用可能会解析为不同编译模块中的函数。
   int get_wmma_layout(int index) const {
     return m_wmma_layout[index];  // 0->Matrix D,1->Matrix C
   }
@@ -1340,8 +1344,12 @@ class ptx_instruction : public warp_inst_t {
   bool m_neg_pred;
   int m_pred_mod;
   int m_opcode;
+  //m_label 是一个 symbol 类的对象，储存了该条指令的标签，例如上述的 $L__BB0_6。如果 m_label 不为空
+  //则代表该条指令是含有标签的。
   const symbol *m_label;
+  //该条指令的操作数列表 m_operands。
   std::vector<operand_info> m_operands;
+  //指令的[返回值]操作数。
   operand_info m_return_var;
 
   std::list<int> m_options;

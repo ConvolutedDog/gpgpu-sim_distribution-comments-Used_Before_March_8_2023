@@ -399,7 +399,7 @@ void warp_inst_t::generate_mem_accesses() {
       //m_config->mem_warp_parts：是共享存储冲突检查将warp划分为的部分数（Number of portions a warp 
       //is divided into for shared memory bank conflict check）。subwarp_size是单个部分的线程数量。
       unsigned subwarp_size = m_config->warp_size / m_config->mem_warp_parts;
-      //
+      //总的最大bank访问数。
       unsigned total_accesses = 0;
       //对一个warp划分为的所有部分遍历。
       for (unsigned subwarp = 0; subwarp < m_config->mem_warp_parts;
@@ -436,17 +436,17 @@ void warp_inst_t::generate_mem_accesses() {
         //将共享内存限制为每个周期执行一次广播（默认设置为打开）。
         if (m_config->shmem_limited_broadcast) {
           // step 2: look for and select a broadcast bank/word if one occurs
-          //步骤2：查找并选择广播Bank/Word，即查找bank_accs[bank][word]中可广播的两层索引。可广播即为：
+          //步骤2：查找并选择广播Bank/Word，即查找bank_accs[bank][word]中有广播的两层索引。有广播即为：
           //bank_accs[bank][word]指向的 [访存的次数]>1。
-          //broadcast_detected代表是否检测到可广播数据的地址的标志。
+          //broadcast_detected代表是否检测到广播数据的地址的标志。
           bool broadcast_detected = false;
-          //bank_accs[bank][word]中可广播数据地址的index2。
+          //bank_accs[bank][word]中广播数据地址的index2。
           new_addr_type broadcast_word = (new_addr_type)-1;
-          //bank_accs[bank][word]中可广播数据地址的index1。
+          //bank_accs[bank][word]中广播数据地址的index1。
           unsigned broadcast_bank = (unsigned)-1;
           std::map<unsigned, std::map<new_addr_type, unsigned> >::iterator b;
           for (b = bank_accs.begin(); b != bank_accs.end(); b++) {
-            //b->first = bank_accs[bank][word]中可广播数据的index1，bank号。
+            //b->first = bank_accs[bank][word]中广播数据的index1，bank号。
             unsigned bank = b->first;
             std::map<new_addr_type, unsigned> &access_set = b->second;
             std::map<new_addr_type, unsigned>::iterator w;
@@ -454,14 +454,14 @@ void warp_inst_t::generate_mem_accesses() {
               //w->second = bank_accs[bank][word]指向的[访存的次数]。
               if (w->second > 1) {
                 // found a broadcast
-                //找到一个可广播的地址。
-                //设置已经检测到可广播数据的地址的标志为 True。
+                //找到一个广播地址。
+                //设置已经检测到广播数据的地址的标志为 True。
                 broadcast_detected = true;
                 //bank号。
                 broadcast_bank = bank;
                 //广播数据的地址。
                 broadcast_word = w->first;
-                //找到一个可广播的地址后，跳出该层循环。
+                //找到一个广播的地址后，跳出该层循环。
                 break;
               }
             }
@@ -471,18 +471,31 @@ void warp_inst_t::generate_mem_accesses() {
 
           // step 3: figure out max bank accesses performed, taking account of
           // broadcast case
-          //步骤3：考虑广播情况，计算执行的最大Bank访问数（max_bank_accesses）。
+          //步骤3：考虑广播情况，计算执行的最大Bank访问数（max_bank_accesses）。就是比如有3个Bank，第1个
+          //Bank访存3次，第2个Bank访存4次，第3个Bank访存5次。最大Bank访问数（max_bank_accesses）=5。
+          //例如，bank_accs的内容为：
+          //    bank_accs[0] = map<new_addr_type, 3> = [<'b01, 3>]
+          //    bank_accs[1] = map<new_addr_type, 4> = [<'b05, 4>]
+          //    bank_accs[2] = map<new_addr_type, 5> = [<'b10, 5>]
           unsigned max_bank_accesses = 0;
+          //bank_accs是一个三维的map，index1是bank号，index1指向的是std::map<new_addr_type, unsigned>
+          //的value。该value的index是new_addr_type的地址，实际保存的是 address 所在的那个字的首个字节数
+          //据的地址，然后这个地址指向的value是[访存的次数]。
           for (b = bank_accs.begin(); b != bank_accs.end(); b++) {
             unsigned bank_accesses = 0;
             std::map<new_addr_type, unsigned> &access_set = b->second;
             std::map<new_addr_type, unsigned>::iterator w;
             for (w = access_set.begin(); w != access_set.end(); ++w)
               bank_accesses += w->second;
+            //发起广播的bank号是 broadcast_bank，该bank里的广播地址为 broadcast_word。由于 bank_accs 里
+            //记录了该次广播的[访存的次数]，但是上面的 bank_accesses 也计算了 broadcast_bank 的被访问次数，
+            //因此应该减去它自己向它自己广播的[访存的次数]。即，broadcast_bank == b->first 且 w->first ==
+            //broadcast_word时，它自己向它自己广播，bank_accesses 减去这个值。
             if (broadcast_detected && broadcast_bank == b->first) {
               for (w = access_set.begin(); w != access_set.end(); ++w) {
                 if (w->first == broadcast_word) {
                   unsigned n = w->second;
+                  //自己向自己广播不算访存。
                   assert(n > 1);  // or this wasn't a broadcast
                   assert(bank_accesses >= (n - 1));
                   bank_accesses -= (n - 1);
@@ -490,15 +503,20 @@ void warp_inst_t::generate_mem_accesses() {
                 }
               }
             }
+            //max_bank_accesses就是取 bank_accs 里的所有 index1 指向的std::map<new_addr_type, unsigned> 
+            //的访存次数的最大值。
             if (bank_accesses > max_bank_accesses)
               max_bank_accesses = bank_accesses;
           }
 
           // step 4: accumulate
+          //步骤4：总的最大bank访问数累加。
           total_accesses += max_bank_accesses;
         } else {
+          //不将共享内存限制为每个周期执行一次广播。
           // step 2: look for the bank with the maximum number of access to
           // different words
+          //步骤2：查找访问不同 word字 最多的Bank。
           unsigned max_bank_accesses = 0;
           std::map<unsigned, std::map<new_addr_type, unsigned> >::iterator b;
           for (b = bank_accs.begin(); b != bank_accs.end(); b++) {
@@ -507,10 +525,13 @@ void warp_inst_t::generate_mem_accesses() {
           }
 
           // step 3: accumulate
+          //步骤3：总的最大bank访问数累加。
           total_accesses += max_bank_accesses;
         }
       }
       assert(total_accesses > 0 && total_accesses <= m_config->warp_size);
+      //共享内存的访存时间消耗模型，建模为每次访存的最大的访存数（每次访存一个周期），因此上面计算了最大Bank访
+      //问数（max_bank_accesses）。
       cycles = total_accesses;  // shared memory conflicts modeled as larger
                                 // initiation interval
       m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_smem_bank_conflict(

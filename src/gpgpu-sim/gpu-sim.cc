@@ -142,15 +142,21 @@ void power_config::reg_options(class OptionParser *opp) {
 受一个OptionParser指针作为参数，用于将存储模型参数添加到OptionParser实例中。
 */
 void memory_config::reg_options(class OptionParser *opp) {
+  //
   option_parser_register(opp, "-gpgpu_perf_sim_memcpy", OPT_BOOL,
                          &m_perf_sim_memcpy, "Fill the L2 cache on memcpy",
                          "1");
+  //默认为0，关闭，后面用到再补充。
   option_parser_register(opp, "-gpgpu_simple_dram_model", OPT_BOOL,
                          &simple_dram_model,
                          "simple_dram_model with fixed latency and BW", "0");
+  //GPGPU-Sim对DRAM调度和时序进行建模。GPGPU-Sim实现了两个开放页面模式DRAM调度器：一个FIFO（先进
+  //先出）调度器和一个FR-FCFS（First-Row First-Come-First-Served，First-Row 先到先服务）调度器，
+  //这两个调度器都在下面描述。可以使用配置选项-gpgpu_dram_scheduler选择这些选项。
   option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32,
                          &scheduler_type, "0 = fifo, 1 = FR-FCFS (defaul)",
                          "1");
+  //
   option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR,
                          &gpgpu_L2_queue_config, "i2$:$2d:d2$:$2i", "8:8:8:8");
 

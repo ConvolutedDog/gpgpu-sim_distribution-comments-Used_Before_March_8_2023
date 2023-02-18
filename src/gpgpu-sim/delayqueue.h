@@ -42,6 +42,10 @@ struct fifo_data {
   fifo_data* m_next;
 };
 
+/*
+从内存分区微架构模型部分描述的子组件来看，data_cache类型的成员对象为二级缓存建模，dram_t类型为片外
+DRAM Channel，各种队列是使用fifo_pipeline类来建模的。
+*/
 template <class T>
 class fifo_pipeline {
  public:

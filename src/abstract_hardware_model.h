@@ -417,8 +417,7 @@ class core_config {
   unsigned gpgpu_shmem_sizePrefShared;
   unsigned mem_unit_ports;
 
-  // texture and constant cache line sizes (used to determine number of memory
-  // accesses)
+  // texture and constant cache line sizes (used to determine number of memory accesses)
   //纹理缓存线大小（用于确定内存访问次数）。
   unsigned gpgpu_cache_texl1_linesize;
   //常量缓存线大小（用于确定内存访问次数）。

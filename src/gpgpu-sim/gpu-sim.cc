@@ -142,7 +142,7 @@ void power_config::reg_options(class OptionParser *opp) {
 受一个OptionParser指针作为参数，用于将存储模型参数添加到OptionParser实例中。
 */
 void memory_config::reg_options(class OptionParser *opp) {
-  //
+  //???
   option_parser_register(opp, "-gpgpu_perf_sim_memcpy", OPT_BOOL,
                          &m_perf_sim_memcpy, "Fill the L2 cache on memcpy",
                          "1");
@@ -156,12 +156,18 @@ void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32,
                          &scheduler_type, "0 = fifo, 1 = FR-FCFS (defaul)",
                          "1");
-  //
+  //内存分区中"icnt-to-L2"，"L2-to-dram"，"dram-to-L2"，"L2-to-icnt"四个queue的最大长度。
+  //内存请求数据包通过ICNT->L2 queue从互连网络进入内存分区。L2 Cache Bank在每个L2时钟周期从ICNT-> 
+  //L2 queue弹出一个请求进行服务。L2生成的芯片外DRAM的任何内存请求都被推入L2->DRAM queue。如果L2 
+  //Cache被禁用，数据包将从ICNT->L2 queue弹出，并直接推入L2->DRAM queue，仍然以L2时钟频率。从片外
+  //DRAM返回的填充请求从DRAM->L2 queue弹出，并由L2 Cache Bank消耗。从L2到SIMT Core的读响应通过L2
+  //->ICNT queue推送。
   option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR,
                          &gpgpu_L2_queue_config, "i2$:$2d:d2$:$2i", "8:8:8:8");
-
+  //貌似没有调用过，后面用到再补充。非常理想的l2_cache，总是访存命中。
   option_parser_register(opp, "-l2_ideal", OPT_BOOL, &l2_ideal,
                          "Use a ideal L2 cache that always hit", "0");
+  //???
   option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR,
                          &m_L2_config.m_config_string,
                          "unified banked L2 data cache config "
@@ -171,42 +177,69 @@ void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_cache:dl2_texture_only", OPT_BOOL,
                          &m_L2_texure_only, "L2 cache used for texture only",
                          "1");
+  //gpgpu_n_mem为配置中的内存控制器（DRAM Channel）数量。
   option_parser_register(
       opp, "-gpgpu_n_mem", OPT_UINT32, &m_n_mem,
       "number of memory modules (e.g. memory controllers) in gpu", "8");
+  //每个内存模块中的子内存子分区的个数。
   option_parser_register(opp, "-gpgpu_n_sub_partition_per_mchannel", OPT_UINT32,
                          &m_n_sub_partition_per_memory_channel,
                          "number of memory subpartition in each memory module",
                          "1");
+  //每个内存控制器的DRAM芯片（也成为DRAM channel）数量由选项-gpgpu_n_mem_per_ctrlr设置。
   option_parser_register(opp, "-gpgpu_n_mem_per_ctrlr", OPT_UINT32,
                          &gpu_n_mem_per_ctrlr,
                          "number of memory chips per memory controller", "1");
+  //收集内存延迟统计信息（0x2启用MC，0x4启用队列日志）。
   option_parser_register(opp, "-gpgpu_memlatency_stat", OPT_INT32,
                          &gpgpu_memlatency_stat,
                          "track and display latency statistics 0x2 enables MC, "
                          "0x4 enables queue logs",
                          "0");
+  //DRAM FRFCFS调度程序队列大小（0 = unlimited (default); # entries per chip）（FIFO调度程序队
+  //列大小固定为2）。
   option_parser_register(opp, "-gpgpu_frfcfs_dram_sched_queue_size", OPT_INT32,
                          &gpgpu_frfcfs_dram_sched_queue_size,
                          "0 = unlimited (default); # entries per chip", "0");
+  //DRAM请求返回队列大小（0 = unlimited (default); # entries per chip）。
   option_parser_register(opp, "-gpgpu_dram_return_queue_size", OPT_INT32,
                          &gpgpu_dram_return_queue_size,
                          "0 = unlimited (default); # entries per chip", "0");
+  //单个DRAM芯片在命令总线频率下的总线带宽（默认值为4字节（每个命令时钟周期8字节））。每个内存控制器
+  //的DRAM芯片数量由选项 -gpgpu_n_mem_per_ctrlr 设置。每个存储器分区具有（gpgpu_dram_buswidth x 
+  //gpgpu_n_mem_per_ctrlr）位的DRAM数据总线引脚。例如，Quadro FX5800有一条512位DRAM数据总线，分为
+  //8个内存分区。每个存储器分区一个 512/8 = 64 位的DRAM数据总线。该64位总线被分割为每个存储器分区的
+  //2个DRAM芯片。每个芯片将具有32位=4字节的DRAM总线宽度。因此，我们将 -gpgpu_dram_buswidth 设置为4。
   option_parser_register(opp, "-gpgpu_dram_buswidth", OPT_UINT32, &busW,
                          "default = 4 bytes (8 bytes per cycle at DDR)", "4");
+  //每个DRAM请求的Burst长度（默认值=4个数据时钟周期，在GDDR3中以2倍命令时钟频率运行）。由-gpgpu_dram
+  //_burst_length <# burst per DRAM request>配置。
   option_parser_register(
       opp, "-gpgpu_dram_burst_length", OPT_UINT32, &BL,
       "Burst length of each DRAM request (default = 4 data bus cycle)", "4");
+  //???
   option_parser_register(opp, "-dram_data_command_freq_ratio", OPT_UINT32,
                          &data_command_freq_ratio,
                          "Frequency ratio between DRAM data bus and command "
                          "bus (default = 2 times, i.e. DDR)",
                          "2");
+  //DRAM时序参数: ???
+  //    [nbk = number of banks]
+  //    [tCCD = CAS to CAS command delay (always = half of burst length)]
+  //    [tRRD = Row active to row active delay]
+  //    [tRCD = RAW to CAS delay]
+  //    [tRAS = Row active time]
+  //    [tRP = Row precharge time]
+  //    [tRC = Row cycle time]
+  //    [CL = CAS latency]
+  //    [WL = Write latency]
+  //    [tWTR = Write to read delay]
   option_parser_register(
       opp, "-gpgpu_dram_timing_opt", OPT_CSTR, &gpgpu_dram_timing_opt,
       "DRAM timing parameters = "
       "{nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tCDLR:tWR:nbkgrp:tCCDL:tRTPL}",
       "4:2:8:12:21:13:34:9:4:5:13:1:0:0");
+  //
   option_parser_register(opp, "-gpgpu_l2_rop_latency", OPT_UINT32, &rop_latency,
                          "ROP queue latency (default 85)", "85");
   option_parser_register(opp, "-dram_latency", OPT_UINT32, &dram_latency,

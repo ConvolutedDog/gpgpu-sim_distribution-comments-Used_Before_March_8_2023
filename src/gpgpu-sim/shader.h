@@ -1482,6 +1482,7 @@ class shader_core_config : public core_config {
   }
   void reg_options(class OptionParser *opp);
   unsigned max_cta(const kernel_info_t &k) const;
+  //返回硬件所有的SM（又称Shader Core）的总数。
   unsigned num_shader() const {
     return n_simt_clusters * n_simt_cores_per_cluster;
   }
@@ -1566,7 +1567,7 @@ class shader_core_config : public core_config {
   int gpgpu_num_int_units;
 
   // Shader core resources
-  //每个Shader Core的寄存器数。并发CTA的限制数量。由GPGPU-Sim的-gpgpu_shader_registers选项配置。
+  //每个Shader Core的寄存器数。并发CTA的限制因素之一。由GPGPU-Sim的-gpgpu_shader_registers选项配置。
   unsigned gpgpu_shader_registers;
   int gpgpu_warpdistro_shader;
   int gpgpu_warp_issue_shader;

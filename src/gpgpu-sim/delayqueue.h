@@ -201,4 +201,5 @@ class fifo_pipeline {
   fifo_data<T>* m_tail;
 };
 
+
 #endif

@@ -3197,37 +3197,64 @@ void shader_core_ctx::display_pipeline(FILE *fout, int print_mem,
   }
 }
 
+/*
+线程块对SIMT Core的调度发生在shader_core_ctx::issue_block2core(...)。一个Core上可同时调度的最大线
+程块（或称为CTA）的数量由函数shader_core_config::max_cta(...)计算。这个函数根据程序指定的每个线程块
+的数量、每个线程寄存器的使用情况、共享内存的使用情况以及配置的每个Core最大线程块数量的限制，确定可以并
+发分配给单个SIMT Core的最大线程块数量。具体说，如果上述每个标准都是限制因素，那么可以分配给SIMT Core
+的线程块的数量被计算出来。其中的最小值就是可以分配给SIMT Core的最大线程块数。
+
+该函数的参数：kernel_info_t为内核函数的信息类。kernel_info_t对象包含GPU网格和块维度、与内核入口点关
+联的 function_info 对象以及为内核参数分配的内存。
+*/
 unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
+  //k.threads_per_cta()返回每个线程块中的线程数量，threads_per_cta=m_block_dim.x * m_block_dim.y 
+  //* m_block_dim.z。就是数定义在CUDA程序中的一个线程块上的线程数量。
   unsigned threads_per_cta = k.threads_per_cta();
+  //k.entry()返回kernel的入口点，该入口点就是主函数。
   const class function_info *kernel = k.entry();
+  //由于一个CTA/线程块中的线程必须要是 warp_size（一个warp中的线程数量）的整数倍，因此需要补足CTA中的
+  //线程，让CTA中的线程数量达到 warp_size 的整数倍。
   unsigned int padded_cta_size = threads_per_cta;
   if (padded_cta_size % warp_size)
     padded_cta_size = ((padded_cta_size / warp_size) + 1) * (warp_size);
 
   // Limit by n_threads/shader
+  //n_thread_per_shader是 -gpgpu_shader_core_pipeline 选项中的第一个值，第二个值是 warp_size。例如
+  //在V100中的 -gpgpu_shader_core_pipeline 2048:32，即一个Shader Core（SM）中实现的是最大 64 warps/
+  //SM，即一个 Shader Core（SM）中实现的最大可并发线程数量是 2048。
+  //result_thread即为，由于[n_threads/shader]限制造成的单个SM内最大可并发CTA数量。
   unsigned int result_thread = n_thread_per_shader / padded_cta_size;
-
+  //返回kernel的kernel_info。
   const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel);
 
   // Limit by shmem/shader
+  //gpgpu_shmem_size为每个SIMT Core（也称为Shader Core，SM）的共享存储大小。由于单个SM内每分配一个CTA，
+  //则要求每个CTA具有独立的相同大小的shared memory，因此，result_shmem是由shared memory限制造成的单个
+  //SM内最大可并发CTA数量。
   unsigned int result_shmem = (unsigned)-1;
   if (kernel_info->smem > 0)
     result_shmem = gpgpu_shmem_size / kernel_info->smem;
 
   // Limit by register count, rounded up to multiple of 4.
+  //gpgpu_shader_registers是每个Shader Core的寄存器数。由于单个SM内每分配一个CTA，则要求每个CTA具有独
+  //立的相同数量的寄存器，result_regs是由寄存器限制造成的单个SM内最大可并发CTA数量。
   unsigned int result_regs = (unsigned)-1;
   if (kernel_info->regs > 0)
     result_regs = gpgpu_shader_registers /
                   (padded_cta_size * ((kernel_info->regs + 3) & ~3));
 
   // Limit by CTA
+  //max_cta_per_core是由硬件配置的SM内的最大可并发CTA数量。
   unsigned int result_cta = max_cta_per_core;
 
+  //选择多个限制因素下，最小的SM内的CTA并发数量。
   unsigned result = result_thread;
   result = gs_min2(result, result_shmem);
   result = gs_min2(result, result_regs);
   result = gs_min2(result, result_cta);
 
+  //将last_kinfo赋值为kernel_info。
   static const struct gpgpu_ptx_sim_info *last_kinfo = NULL;
   if (last_kinfo !=
       kernel_info) {  // Only print out stats if kernel_info struct changes
@@ -3242,6 +3269,12 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
 
   // gpu_max_cta_per_shader is limited by number of CTAs if not enough to keep
   // all cores busy
+  //gpu_max_cta_per_shader受cta数量的限制，如果不足以保持所有核忙碌。
+  //k.num_blocks()返回CUDA代码中的Grid中的所有线程块的总数。num_shader()返回硬件所有的SM（又称Shader 
+  //Core）的总数。如果上述计算的result*SM数量 > Grid中的所有线程块的总数，即result数量的CTA并不能使得
+  //所有SM处于忙碌状态：例如，有10个SM，上面计算出的受限的最大CTA并发数result=5，但是CUDA代码中有40个
+  //线程块，所以 40 < 5 * 10。为了让所有SM都忙碌起来，以充分利用所有的硬件资源，可以将上面计算出的受限
+  //的最大CTA并发数再降低一些，以平均分配到每个SM上。
   if (k.num_blocks() < result * num_shader()) {
     result = k.num_blocks() / num_shader();
     if (k.num_blocks() % num_shader()) result++;
@@ -3260,10 +3293,13 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
     }
     abort();
   }
-
+  //在V100 GPU中，可支持 adaptive_cache_config（适应性的cache配置），ADAPTIVE_VOLTA=1。
+  //适应性的cache配置代表：在V100中，将剩余的不使用的shared memory划给L1 cache使用。
+  //初始状态时，设置L1 cache适应性配置的标志为False。
   if (adaptive_cache_config && !k.cache_config_set) {
     // For more info about adaptive cache, see
     // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
+    //计算当前单个SM中的所有CTA的共享存储的总量。
     unsigned total_shmed = kernel_info->smem * result;
     assert(total_shmed >= 0 && total_shmed <= gpgpu_shmem_size);
     // assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
@@ -3272,13 +3308,15 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
       switch (adaptive_cache_config) {
         case FIXED:
           break;
+        //V100 GPU。
         case ADAPTIVE_VOLTA: {
           // For Volta, we assign the remaining shared memory to L1 cache
           // For more info about adaptive cache, see
           // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
           // assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
-
+          
           // To Do: make it flexible and not tuned to 9KB share memory
+          //重新设置L1 cache的大小。
           unsigned max_assoc = m_L1D_config.get_max_assoc();
           if (total_shmed == 0)
             m_L1D_config.set_assoc(max_assoc);  // L1 is 128KB and shd=0
@@ -3307,7 +3345,7 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
       printf("GPGPU-Sim: Reconfigure L1 cache to %uKB\n",
              m_L1D_config.get_total_size_inKB());
     }
-
+    //设置L1 cache适应性配置的标志为True。
     k.cache_config_set = true;
   }
 

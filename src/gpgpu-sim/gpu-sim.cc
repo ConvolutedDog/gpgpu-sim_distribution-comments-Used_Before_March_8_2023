@@ -1035,10 +1035,9 @@ void exec_gpgpu_sim::createSIMTCluster() {
 }
 
 /*
-性能仿真引擎是通过 <gpgpu-sim_root>/src/gpgpu-sim/ 下的文件中定义和实现的许多类来实现的。这些类通过
-顶层类 gpgpu_sim 汇集在一起，该类是由 gpgpu_t （其功能仿真对应部分）派生的。在当前版本的GPGPU-Sim中，
-模拟器中只有一个 gpgpu_sim 的实例 g_the_gpu。目前不支持同时对多个GPU进行仿真，但在未来的版本中可能会
-提供。
+性能仿真引擎是通过 src/gpgpu-sim/ 下的文件中定义和实现的许多类来实现的。这些类通过顶层类 gpgpu_sim 
+汇集在一起，该类是由 gpgpu_t （其功能仿真对应部分）派生的。在当前版本的GPGPU-Sim中，模拟器中只有一个 
+gpgpu_sim 的实例 g_the_gpu。目前不支持同时对多个GPU进行仿真，但在未来的版本中可能会提供。
 */
 gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
     : gpgpu_t(config, ctx), m_config(config) {

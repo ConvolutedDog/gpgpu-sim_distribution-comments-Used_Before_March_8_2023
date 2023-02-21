@@ -429,6 +429,12 @@ memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
   unsigned int L2_icnt;
   sscanf(m_config->gpgpu_L2_queue_config, "%u:%u:%u:%u", &icnt_L2, &L2_dram,
          &dram_L2, &L2_icnt);
+  //这些queue在GPGPU-Sim v3.0手册中的#内存分区部分有介绍。
+  //内存请求数据包通过ICNT->L2 queue从互连网络进入内存分区。L2 Cache Bank在每个L2时钟周期从ICNT->L2 
+  //queue弹出一个请求进行服务。L2生成的芯片外DRAM的任何内存请求都被推入L2->DRAM queue。如果L2 Cache
+  //被禁用，数据包将从ICNT->L2 queue弹出，并直接推入L2->DRAM queue，仍然以L2时钟频率。从片外DRAM返回
+  //的填充请求从DRAM->L2 queue弹出，并由L2 Cache Bank消耗。从L2到SIMT Core的读响应通过L2->ICNT que-
+  //ue推送。
   m_icnt_L2_queue = new fifo_pipeline<mem_fetch>("icnt-to-L2", 0, icnt_L2);
   m_L2_dram_queue = new fifo_pipeline<mem_fetch>("L2-to-dram", 0, L2_dram);
   m_dram_L2_queue = new fifo_pipeline<mem_fetch>("dram-to-L2", 0, dram_L2);

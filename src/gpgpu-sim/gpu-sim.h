@@ -537,6 +537,7 @@ lloc, memcpy, texture-bindin, ...）。这些成员函数被CUDA/OpenCL的API实
 */
 class gpgpu_sim : public gpgpu_t {
 public:
+    //构造函数。
     gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx);
 
     void set_prop(struct cudaDeviceProp *prop);

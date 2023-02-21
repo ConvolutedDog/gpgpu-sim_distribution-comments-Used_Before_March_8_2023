@@ -529,6 +529,12 @@ private:
     const ptx_instruction *m_inst;
 };
 
+/*
+实现GPU功能模拟器的顶层类。它包含功能模拟器的配置（gpgpu_functional_sim_config），并持有实现全局/纹
+理内存空间的实际缓冲器（memory_space类的实例）。它有一组成员函数，提供对模拟的GPU内存空间的管理（ma-
+lloc, memcpy, texture-bindin, ...）。这些成员函数被CUDA/OpenCL的API实现所调用。gpgpu_sim类（顶级
+的GPU时序仿真模型）是由该类派生的。
+*/
 class gpgpu_sim : public gpgpu_t {
 public:
     gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx);

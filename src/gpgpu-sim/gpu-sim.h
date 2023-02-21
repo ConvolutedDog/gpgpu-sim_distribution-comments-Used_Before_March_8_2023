@@ -552,30 +552,32 @@ public:
     void cycle();
     bool active();
     bool cycle_insn_cta_max_hit() {
-        return (m_config.gpu_max_cycle_opt && (gpu_tot_sim_cycle + gpu_sim_cycle) >=
-                                                                                            m_config.gpu_max_cycle_opt) ||
-                     (m_config.gpu_max_insn_opt &&
-                        (gpu_tot_sim_insn + gpu_sim_insn) >= m_config.gpu_max_insn_opt) ||
-                     (m_config.gpu_max_cta_opt &&
-                        (gpu_tot_issued_cta >= m_config.gpu_max_cta_opt)) ||
-                     (m_config.gpu_max_completed_cta_opt &&
-                        (gpu_completed_cta >= m_config.gpu_max_completed_cta_opt));
+        return (m_config.gpu_max_cycle_opt && (gpu_tot_sim_cycle + gpu_sim_cycle) >= m_config.gpu_max_cycle_opt) ||
+               (m_config.gpu_max_insn_opt  && (gpu_tot_sim_insn + gpu_sim_insn) >= m_config.gpu_max_insn_opt)    ||
+               (m_config.gpu_max_cta_opt   && (gpu_tot_issued_cta >= m_config.gpu_max_cta_opt))                  ||
+               (m_config.gpu_max_completed_cta_opt && (gpu_completed_cta >= m_config.gpu_max_completed_cta_opt));
     }
     void print_stats();
     void update_stats();
     void deadlock_check();
     void inc_completed_cta() { gpu_completed_cta++; }
-    void get_pdom_stack_top_info(unsigned sid, unsigned tid, unsigned *pc,
-                                                             unsigned *rpc);
-
+    void get_pdom_stack_top_info(unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc);
+    //获取每个SIMT Core（也称为Shader Core）的共享存储大小。由GPGPU-Sim的-gpgpu_shmem_size选项配置。
     int shared_mem_size() const;
+    //获取每个线程块或CTA的共享内存大小（默认48KB）。由GPGPU-Sim的-gpgpu_shmem_per_block选项配置。
     int shared_mem_per_block() const;
     int compute_capability_major() const;
     int compute_capability_minor() const;
+    //获取每个Shader Core的寄存器数。并发CTA的限制数量。由GPGPU-Sim的-gpgpu_shader_registers选项配置。
     int num_registers_per_core() const;
+    //获取每个CTA的最大寄存器数。由GPGPU-Sim的-gpgpu_registers_per_block选项配置。
     int num_registers_per_block() const;
+    //获取一个warp有多少线程数。由GPGPU-Sim的-gpgpu_shader_core_pipeline的第二个选项配置。
+    //选项-gpgpu_shader_core_pipeline的参数分别是：<每个SM最大可支配线程数>:<定义一个warp有多少线程>。
     int wrp_size() const;
+    //获取以MHz为单位的时钟域频率的<Core Clock>。由GPGPU-Sim的-gpgpu_clock_domains的第一个选项配置。
     int shader_clock() const;
+    //获取Shader Core中并发cta的最大数量。由GPGPU-Sim的-gpgpu_shader_cta选项配置。
     int max_cta_per_core() const;
     int get_max_cta(const kernel_info_t &k) const;
     const struct cudaDeviceProp *get_prop() const;

@@ -233,6 +233,7 @@ class kernel_info_t {
   }
   const class function_info *entry() const { return m_kernel_entry; }
 
+  //返回CUDA代码中的Grid中的所有线程块的总数。
   size_t num_blocks() const {
     return m_grid_dim.x * m_grid_dim.y * m_grid_dim.z;
   }
@@ -425,7 +426,7 @@ class core_config {
 
   unsigned gpgpu_max_insn_issue_per_warp;
   bool gmem_skip_L1D;  // on = global memory access always skip the L1 cache
-
+  //适应性的cache配置代表：在V100中，将剩余的不使用的shared memory划给L1 cache使用。
   bool adaptive_cache_config;
 };
 

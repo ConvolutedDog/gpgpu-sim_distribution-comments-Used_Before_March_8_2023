@@ -602,7 +602,9 @@ class gpgpu_t {
   int checkpoint_insn_Y;
 
   // Move some cycle core stats here instead of being global
+  //gpu_sim_cycle是执行当前阶段的指令的延迟。
   unsigned long long gpu_sim_cycle;
+  //gpu_tot_sim_cycle是执行当前阶段之前的所有前绪指令的延迟。
   unsigned long long gpu_tot_sim_cycle;
 
   void *gpu_malloc(size_t size);

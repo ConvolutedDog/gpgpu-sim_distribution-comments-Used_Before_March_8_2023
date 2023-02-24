@@ -358,9 +358,9 @@ void ptx_recognizer::add_identifier(const char *identifier, int array_dim,
     symbol *s = g_current_symbol_table->lookup(identifier);
     g_last_symbol = s;
     if (g_func_decl) return;
-    std::string msg = std::string(identifier) + " was declared previous at " +
-                      s->decl_location() + " skipping new declaration";
-    printf("GPGPU-Sim PTX: Warning %s\n", msg.c_str());
+    //std::string msg = std::string(identifier) + " was declared previous at " +
+    //                  s->decl_location() + " skipping new declaration";
+    //printf("GPGPU-Sim PTX: Warning %s\n", msg.c_str());
     return;
   }
 

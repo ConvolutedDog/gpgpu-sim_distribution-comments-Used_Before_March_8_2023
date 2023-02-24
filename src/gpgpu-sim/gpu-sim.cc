@@ -1016,8 +1016,8 @@ void gpgpu_sim::stop_all_running_kernels() {
 }
 
 /*
-创建SIMT Cluster。
-  1.m_shader_config：定义shader处理器的配置，包括每个shader处理器的指令宽度、数据宽度、指令缓存大小
+创建SIMT Cluster。m_cluster[...]存储了所有的SM。
+  1.m_shader_config：定义shader Core的配置，包括每个shader处理器的指令宽度、数据宽度、指令缓存大小
     等；
   2.m_memory_config：定义存储模块的配置，包括每个存储模块的读写带宽、latency等；
   3.m_shader_stats：定义shader处理器的统计信息，包括每个shader处理器的指令执行次数、指令缓存命中次
@@ -1035,7 +1035,7 @@ void exec_gpgpu_sim::createSIMTCluster() {
 }
 
 /*
-性能仿真引擎是通过 src/gpgpu-sim/ 下的文件中定义和实现的许多类来实现的。这些类通过顶层类 gpgpu_sim 
+性能仿真引擎是通过 src/gpgpu-sim 下的文件中定义和实现的许多类来实现的。这些类通过顶层类 gpgpu_sim 
 汇集在一起，该类是由 gpgpu_t （其功能仿真对应部分）派生的。在当前版本的GPGPU-Sim中，模拟器中只有一个 
 gpgpu_sim 的实例 g_the_gpu。目前不支持同时对多个GPU进行仿真，但在未来的版本中可能会提供。
 */
@@ -1046,6 +1046,7 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
   m_shader_config = &m_config.m_shader_config;
   m_memory_config = &m_config.m_memory_config;
   ctx->ptx_parser->set_ptx_warp_size(m_shader_config);
+  //m_config.num_shader()返回硬件所有的SM（又称Shader Core）的总数。
   ptx_file_line_stats_create_exposed_latency_tracker(m_config.num_shader());
 
 #ifdef GPGPUSIM_POWER_MODEL
@@ -1064,8 +1065,10 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
 
   gpu_sim_insn = 0;
   gpu_tot_sim_insn = 0;
+  //即总发出的CTA（Compute Thread Array）亦即线程块数量。
   gpu_tot_issued_cta = 0;
   gpu_completed_cta = 0;
+  //已经启动的CTA数量。
   m_total_cta_launched = 0;
   gpu_deadlock = false;
 
@@ -1165,30 +1168,57 @@ int gpgpu_sim::max_cta_per_core() const {
 }
 
 /*
-
+返回一个Core上可同时调度的最大线程块（或称为CTA）的数量，它由函数shader_core_config::max_cta(...)计
+算。max_cta(...)函数根据程序指定的每个线程块的数量、每个线程寄存器的使用情况、共享内存的使用情况以及配
+置的每个Core最大线程块数量的限制，确定可以并发分配给单个SIMT Core的最大线程块数量。具体说，如果上述每
+个标准都是限制因素，那么可以分配给SIMT Core的线程块的数量被计算出来。其中的最小值就是可以分配给SIMT 
+Core的最大线程块数。
 */
 int gpgpu_sim::get_max_cta(const kernel_info_t &k) const {
   return m_shader_config->max_cta(k);
 }
 
+/*
+m_cuda_properties变量是一个结构体，用于存储CUDA设备的性能和功能特性，包括最大线程数、最大块大小、最大
+纹理大小等。
+*/
 void gpgpu_sim::set_prop(cudaDeviceProp *prop) { m_cuda_properties = prop; }
 
+/*
+返回最大的设备计算能力。由-gpgpu_compute_capability_major选项配置。
+*/
 int gpgpu_sim::compute_capability_major() const {
   return m_config.gpgpu_compute_capability_major;
 }
 
+/*
+返回最小的设备计算能力。由-gpgpu_compute_capability_minor选项配置。
+*/
 int gpgpu_sim::compute_capability_minor() const {
   return m_config.gpgpu_compute_capability_minor;
 }
 
+/*
+返回m_cuda_properties变量结构体，用于存储CUDA设备的性能和功能特性。
+*/
 const struct cudaDeviceProp *gpgpu_sim::get_prop() const {
   return m_cuda_properties;
 }
 
+/*
+
+*/
 enum divergence_support_t gpgpu_sim::simd_model() const {
   return m_shader_config->model;
 }
 
+/*
+初始化时钟域。GPGPU-Sim支持四个独立的时钟域：
+（1）SIMT Core集群时钟域，core_freq;
+（2）互连网络时钟域，icnt_freq;
+（3）L2高速缓存时钟域，适用于内存分区单元中除DRAM之外的所有逻辑，l2_freq;
+（4）DRAM时钟域，dram_freq。
+*/
 void gpgpu_sim_config::init_clock_domains(void) {
   sscanf(gpgpu_clock_domains, "%lf:%lf:%lf:%lf", &core_freq, &icnt_freq,
          &l2_freq, &dram_freq);
@@ -1196,6 +1226,7 @@ void gpgpu_sim_config::init_clock_domains(void) {
   icnt_freq = icnt_freq MhZ;
   l2_freq = l2_freq MhZ;
   dram_freq = dram_freq MhZ;
+  //周期。
   core_period = 1 / core_freq;
   icnt_period = 1 / icnt_freq;
   dram_period = 1 / dram_freq;
@@ -1206,6 +1237,9 @@ void gpgpu_sim_config::init_clock_domains(void) {
          core_period, icnt_period, l2_period, dram_period);
 }
 
+/*
+重新初始化下一个上升沿的时刻。即将当前时刻四个时钟域的时刻值重置零。
+*/
 void gpgpu_sim::reinit_clock_domains(void) {
   core_time = 0;
   dram_time = 0;
@@ -1213,19 +1247,37 @@ void gpgpu_sim::reinit_clock_domains(void) {
   l2_time = 0;
 }
 
+/*
+返回GPGPU-Sim模拟器是否处于活跃状态。
+*/
 bool gpgpu_sim::active() {
+  //gpu_max_cycle_opt选项配置：在达到最大周期数后尽早终止GPU模拟。
+  //gpu_sim_cycle是执行当前阶段的指令的延迟。
+  //gpu_tot_sim_cycle是执行当前阶段之前的所有前绪指令的延迟。
+  //两项延迟相加 >= gpu_max_cycle_opt说明会达到最大周期数，返回False。
   if (m_config.gpu_max_cycle_opt &&
       (gpu_tot_sim_cycle + gpu_sim_cycle) >= m_config.gpu_max_cycle_opt)
     return false;
+  //gpu_max_insn_opt选项配置：在达到最大指令数后尽早终止GPU模拟。
+  //gpu_sim_insn是执行当前阶段的指令的总数，比如将各个warp的相加。
+  //gpu_tot_sim_insn是执行当前阶段之前的所有前绪指令的总数。
+  //两项总数相加 >= gpu_max_insn_opt说明会达到最大指令数，返回False。
   if (m_config.gpu_max_insn_opt &&
       (gpu_tot_sim_insn + gpu_sim_insn) >= m_config.gpu_max_insn_opt)
     return false;
+  //gpu_max_cta_opt选项配置：GPGPU-Sim所能达到最大CTA并发数尽早终止GPU模拟。
+  //gpu_tot_issued_cta即总发出的CTA（Compute Thread Array）亦即线程块数量。
+  //总发出的CTA数量 >= gpu_max_cta_opt，返回False。
   if (m_config.gpu_max_cta_opt &&
       (gpu_tot_issued_cta >= m_config.gpu_max_cta_opt))
     return false;
+  //gpu_max_completed_cta_opt选项配置：在达到最大CTA完成数后尽早终止GPU模拟。
+  //gpu_completed_cta是已经完成的CTA的总数。
+  //已经完成的CTA的总数 >= gpu_max_completed_cta_opt，返回False。
   if (m_config.gpu_max_completed_cta_opt &&
       (gpu_completed_cta >= m_config.gpu_max_completed_cta_opt))
     return false;
+  //gpu_deadlock_detect选项配置：在死锁时停止模拟。
   if (m_config.gpu_deadlock_detect && gpu_deadlock) return false;
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
     if (m_cluster[i]->get_not_completed() > 0) return true;
@@ -1238,12 +1290,20 @@ bool gpgpu_sim::active() {
   return false;
 }
 
+/*
+初始化GPGPU-Sim的配置参数。
+*/
 void gpgpu_sim::init() {
   // run a CUDA grid on the GPU microarchitecture simulator
+  //执行当前阶段的指令的延迟。
   gpu_sim_cycle = 0;
+  //执行当前阶段的指令的总数，比如将各个warp的相加。
   gpu_sim_insn = 0;
+  //???
   last_gpu_sim_insn = 0;
+  //已经启动的CTA数量。
   m_total_cta_launched = 0;
+  //已经完成的CTA的总数。
   gpu_completed_cta = 0;
   partiton_reqs_in_parallel = 0;
   partiton_replys_in_parallel = 0;
@@ -2021,6 +2081,14 @@ void gpgpu_sim::issue_block2core() {
 unsigned long long g_single_step =
     0;  // set this in gdb to single step the pipeline
 
+/*
+发出线程块需要一个分层调用，如下所示：
+  gpgpu_sim::cycle()
+    gpgpu_sim::issue_block2core()
+      simt_core_cluster::issue_block2core()
+        shader_core_ctx::issue_block2core()
+          trace_shader_core_ctx::init_warps()
+*/
 void gpgpu_sim::cycle() {
   int clock_mask = next_clock_domain();
 

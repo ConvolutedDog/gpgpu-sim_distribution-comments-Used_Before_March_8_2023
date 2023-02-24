@@ -1492,17 +1492,17 @@ std::string ptx_instruction::to_string() const {
   if (!is_label()) {
     used_bytes +=
         snprintf(buf + used_bytes, STR_SIZE - used_bytes, " PC=0x%03x ", m_PC);
-        printf("\n== In ptx_instruction::to_string() !is_label() ==> PC=0x%03x \n", m_PC);
+        //printf("\n== In ptx_instruction::to_string() !is_label() ==> PC=0x%03x \n", m_PC);
   } else {
     used_bytes +=
         snprintf(buf + used_bytes, STR_SIZE - used_bytes, "                ");
-        printf("\n== In ptx_instruction::to_string() is_label() ==>  \n");
+        //printf("\n== In ptx_instruction::to_string() is_label() ==>  \n");
   }
   used_bytes +=
       snprintf(buf + used_bytes, STR_SIZE - used_bytes, "(%s:%d) %s",
                m_source_file.c_str(), m_source_line, m_source.c_str());
-      printf("\n== In ptx_instruction::to_string() all ==> (%s:%d) %s \n", 
-             m_source_file.c_str(), m_source_line, m_source.c_str());
+      //printf("\n== In ptx_instruction::to_string() all ==> (%s:%d) %s \n", 
+      //       m_source_file.c_str(), m_source_line, m_source.c_str());
   return std::string(buf);
 }
 

@@ -1403,6 +1403,9 @@ struct specialized_unit_params {
   unsigned OC_EX_SPEC_ID;
 };
 
+/*
+Shader Core的配置类。
+*/
 class shader_core_config : public core_config {
  public:
   shader_core_config(gpgpu_context *ctx) : core_config(ctx) {

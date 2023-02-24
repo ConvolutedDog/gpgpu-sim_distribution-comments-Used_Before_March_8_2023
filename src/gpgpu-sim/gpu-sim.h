@@ -655,18 +655,21 @@ protected:
     // count.
     unsigned long long m_total_cta_launched;
     unsigned long long gpu_tot_issued_cta;
+    //已经完成的CTA的总数。
     unsigned gpu_completed_cta;
 
     unsigned m_last_cluster_issue;
     float *average_pipeline_duty_cycle;
     float *active_sms;
     // time of next rising edge
+    //下一个上升沿的时刻。
     double core_time;
     double icnt_time;
     double dram_time;
     double l2_time;
 
     // debug
+    //检测到GPU存在死锁。
     bool gpu_deadlock;
 
     //// configuration parameters ////
@@ -700,7 +703,9 @@ protected:
     virtual void createSIMTCluster() = 0;
 
 public:
+    //执行当前阶段的指令的总数，比如将各个warp的相加。
     unsigned long long gpu_sim_insn;
+    //执行当前阶段之前的所有前绪指令的总数。
     unsigned long long gpu_tot_sim_insn;
     unsigned long long gpu_sim_insn_last_update;
     unsigned gpu_sim_insn_last_update_sid;

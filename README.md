@@ -512,4 +512,5 @@ git push [-v main]
 
 After pushing the modified files to Gitee, Gitee will update Github's repo synchronously.
 
+
 由于后期在使用 `pytorch-gpgpu-sim` 时，每次运行都需要提取PTX指令，对提取指令部分修改，可以通过 `export CUOBJDUMP_SIM_FILE=_cuobjdump_list_ptx_5cXQVY` 指定使用本地已经提取的指令。需保证 `_cuobjdump_list_ptx_5cXQVY` 有指令列表，`test.1.sm_52.ptx` 中确实已经含有提取的指令。

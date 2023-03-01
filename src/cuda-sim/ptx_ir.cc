@@ -336,6 +336,9 @@ unsigned operand_info::get_uid() {
   return result;
 }
 
+/*
+find_next_real_instruction 用于找到下一条非is_label()的指令。如果i指向的指令是label，就再i++。
+*/
 std::list<ptx_instruction *>::iterator
 function_info::find_next_real_instruction(
     std::list<ptx_instruction *>::iterator i) {
@@ -343,32 +346,93 @@ function_info::find_next_real_instruction(
   return i;
 }
 
+/*
+将各个指令分组为基本块（basic_block_t）。m_instructions 保存了 function_info 对象的所有PTX指
+令。该函数执行完毕后，会将所有 PTX 指令分为基本块，添加到 m_basic_blocks 中。m_basic_blocks是
+基本块类型的向量：std::vector<basic_block_t *> m_basic_blocks。例如下列 PTX 指令：
+m_instructions保存了下列所有条指令：
+    ld.param.u64 %rd18, [_Z6MatMulPiS_S_i_param_0];   |          -->ptx_begin/leaders[0]
+    ......                                            |->m_basic_blocks[0]
+    @%p1 bra $L__BB0_7;                               |          -->ptx_end
+
+    add.s32 %r15, %r12, -1;                           |          -->ptx_begin/leaders[1]
+    ......                                            |->m_basic_blocks[1]
+    @%p2 bra $L__BB0_4;                               |          -->ptx_end
+
+    sub.s32 %r33, %r12, %r35;                         |          -->ptx_begin/leaders[2]
+    ......                                            |->m_basic_blocks[2]
+    mul.wide.s32 %rd5, %r12, 4;                       |          -->ptx_end
+
+    $L__BB0_3:                                        |          -->ptx_begin/leaders[3]
+    ld.global.u32 %r18, [%rd30+-8];                   |->m_basic_blocks[3]
+    ......                                            |
+    @%p3 bra $L__BB0_3;                               |          -->ptx_end
+
+    $L__BB0_4:                                        |          -->ptx_begin/leaders[4]
+    setp.eq.s32 %p4, %r35, 0;                         |->m_basic_blocks[4]
+    @%p4 bra $L__BB0_7;                               |          -->ptx_end
+
+    mad.lo.s32 %r26, %r34, %r12, %r1;                 |          -->ptx_begin/leaders[5]
+    ......                                            |->m_basic_blocks[5]
+    add.s64 %rd32, %rd2, %rd26;                       |          -->ptx_end
+
+    $L__BB0_6:                                        |          -->ptx_begin/leaders[6]
+    .pragma "nounroll";                               |->m_basic_blocks[6]
+    ......                                            |
+    @%p5 bra $L__BB0_6;                               |          -->ptx_end
+
+    $L__BB0_7:                                        |          -->ptx_begin/leaders[7]
+    cvta.to.global.u64 %rd27, %rd17;                  |->m_basic_blocks[7]
+    ......                                            |
+    ret;                                              |          -->ptx_end
+*/
 void function_info::create_basic_blocks() {
+  //leaders保存了一个代码块的首条指令。需要注意的是，一个代码块的结尾指令一般是 bra、ret、exit、
+  //retp、break、call、callp 等指令，它们是跳转功能指令，代表了一个代码块的结尾；因此这条指令的
+  //后面一条指令肯定是个新代码块的首条指令。
   std::list<ptx_instruction *> leaders;
   std::list<ptx_instruction *>::iterator i, l;
 
   // first instruction is a leader
+  //m_instructions 的首条指令肯定属于第一个代码块，因此该首条指令是一个 leader。
   i = m_instructions.begin();
   leaders.push_back(*i);
   i++;
+  //对m_instructions中除去首条指令之外的所有其余指令循环。
   while (i != m_instructions.end()) {
+    //pI指向的是当前处理的指令。
     ptx_instruction *pI = *i;
+    //is_label() 用于判断指令pI是否含有标签。label即为例如PTX指令块中的$L__BB0_6等：
+    //  01.$L__BB0_6: <---- label
+    //  02.  .pragma "nounroll";
+    //  03.  ld.global.u32 %r28, [%rd32];
+    //  04.  ...
+    //  ...  ...
+    //  12.  @%p5 bra $L__BB0_6; <---- label = $L__BB0_6
     if (pI->is_label()) {
+      //如果pI是标签，代表它是代码块的首条指令，则直接将它压入leaders末端。
       leaders.push_back(pI);
+      //find_next_real_instruction 用于找到下一条非is_label()的指令。
       i = find_next_real_instruction(++i);
     } else {
+      //如果pI不是标签，需要判断操作码。因为，bra、ret、exit、retp、break、call、callp 这些指
+      //令一般是一个代码块的结尾。
       switch (pI->get_opcode()) {
-        case BRA_OP:
-        case RET_OP:
-        case EXIT_OP:
-        case RETP_OP:
-        case BREAK_OP:
+        //bra、ret、exit、retp、break一般是一个代码块的结尾，因此把 i++ 后的下一条指令直接压入
+        //leaders末端。
+        case BRA_OP:   //bra指令。
+        case RET_OP:   //ret指令。
+        case EXIT_OP:  //exit指令。
+        case RETP_OP:  //retp指令。
+        case BREAK_OP: //break指令。
           i++;
           if (i != m_instructions.end()) leaders.push_back(*i);
           i = find_next_real_instruction(i);
           break;
-        case CALL_OP:
-        case CALLP_OP:
+        case CALL_OP:  //call指令。
+        case CALLP_OP: //callp指令。
+          //如果该条指令有谓词寄存器，则一般是一个代码块的结尾，因此把 i++ 后的下一条指令直接压入
+          //leaders末端。
           if (pI->has_pred()) {
             printf("GPGPU-Sim PTX: Warning found predicated call\n");
             i++;
@@ -383,23 +447,55 @@ void function_info::create_basic_blocks() {
     }
   }
 
+  //如果leaders为空，则该函数没有基本块。
   if (leaders.empty()) {
     printf("GPGPU-Sim PTX: Function \'%s\' has no basic blocks\n",
            m_name.c_str());
     return;
   }
 
+  //bb_id是basic block的唯一标识，每次添加一个基本块的时候要加1。
   unsigned bb_id = 0;
   l = leaders.begin();
   i = m_instructions.begin();
+  //m_basic_blocks是基本块类型的向量：
+  //    std::vector<basic_block_t *> m_basic_blocks;
+  //l指向的是由首条指令起始的第一个入口基本块，将该基本块加入到m_basic_blocks。
+  //basic_block_t类在ptx_ir.h中定义，其构造函数：
+  //  basic_block_t(unsigned ID, ptx_instruction *begin, ptx_instruction *end,
+  //                bool entry, bool ex) {
+  //    //basic block的唯一标识。
+  //    bb_id = ID;
+  //    //ptx_begin是该基本块的首条PTX指令。
+  //    ptx_begin = begin;
+  //    //ptx_end是该基本块的末尾PTX指令。
+  //    ptx_end = end;
+  //    //is_entry标志该基本块是否是入口处的基本块。
+  //    is_entry = entry;
+  //    //is_exit标志该基本块是否是出口处的基本块。
+  //    is_exit = ex;
+  //    immediatepostdominator_id = -1;
+  //    immediatedominator_id = -1;
+  //  }
+  //因此 begin 指向的是 m_instructions 的第一条指令；*end 后面找到了再赋值；entry 置1；ex置0。
+  //*find_next_real_instruction(i)是因为，前面 i 指向的是 m_instructions.begin()，而在之前把
+  //基本块的首条指令加入到 m_basic_blocks 时，find_next_real_instruction(i) 是找到非label指令，
+  //但我觉得这里没什么太大必要，因为一个 function_info 中的首条指令肯定不会是 label。
   m_basic_blocks.push_back(
       new basic_block_t(bb_id++, *find_next_real_instruction(i), NULL, 1, 0));
+  //last_real_inst是处理leaders中的某条指令时，上一个指令由last_real_inst指向，代表上一个代码块
+  //的结尾。l++是因为上面添加一个基本块时，l已经是一个基本块的开始指令，然后last_real_inst是用来
+  //在处理下一个基本块的首条指令时，为上一个基本块的末尾指令ptx_end赋值。l++执行完毕后即指向了下一
+  //个代码块的起始指令。
   ptx_instruction *last_real_inst = *(l++);
-
+  //后面对 m_instructions 中的指令进行循环，依次处理每条指令所在的代码块。
   for (; i != m_instructions.end(); i++) {
     ptx_instruction *pI = *i;
+    //如果 i 所指向的指令 == l 所指向的指令，即发现下一个基本块。因为上面l++执行完毕后即指向了下一
+    //个代码块的起始指令。
     if (l != leaders.end() && *i == *l) {
       // found start of next basic block
+      //为上一个基本块的 ptx_end 赋值为 last_real_inst。
       m_basic_blocks.back()->ptx_end = last_real_inst;
       if (find_next_real_instruction(i) !=
           m_instructions.end()) {  // if not bogus trailing label
@@ -411,6 +507,8 @@ void function_info::create_basic_blocks() {
       l++;
     }
     pI->assign_bb(m_basic_blocks.back());
+    //对每一条指令循环时，循环一次，last_real_inst就赋值为当前指令 PI。这样在发现下一个代码块时，
+    //就可以直接将上一个代码块的ptx_end赋值为last_real_inst。
     if (!pI->is_label()) last_real_inst = pI;
   }
   m_basic_blocks.back()->ptx_end = last_real_inst;
@@ -512,6 +610,10 @@ operand_info *function_info::find_break_target(
 
   return NULL;
 }
+
+/*
+将基本块连接起来，形成控制流图。
+*/
 void function_info::connect_basic_blocks()  // iterate across m_basic_blocks of
                                             // function, connecting basic blocks
                                             // together
@@ -614,8 +716,11 @@ bool function_info::connect_break_targets()  // connecting break instructions
 
   return modified;
 }
+//执行PDOM（分支处理中的后支配者）检测。
 void function_info::do_pdom() {
+  //将各个指令分组为基本块（basic_block_t）。
   create_basic_blocks();
+  //将基本块连接起来，形成控制流图。
   connect_basic_blocks();
   bool modified = false;
   do {

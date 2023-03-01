@@ -2698,6 +2698,24 @@ set_kernel_info()在ptx_ir.h中定义：
         unsigned ptx_version;     // PTX version
         unsigned sm_target;       // 目标 SM
     };
+m_kernel_info包括：Registers/shmem/etc. used (from ptxas -v), loaded from ___.ptxinfo along 
+with ___.ptx。例如，cuda_codes/myTest/文件夹下面的PTX文件：
+     .version 7.5
+     .target sm_52
+     .address_size 64
+     .visible .entry _Z6MatMulPiS_S_i(
+         .param .u64 _Z6MatMulPiS_S_i_param_0,
+         .param .u64 _Z6MatMulPiS_S_i_param_1,
+         .param .u64 _Z6MatMulPiS_S_i_param_2,
+         .param .u32 _Z6MatMulPiS_S_i_param_3
+     )
+     ......
+使用 ptxas 后，PTXAS文件：
+     ptxas info    : 0 bytes gmem
+     ptxas info    : Compiling entry function '_Z6MatMulPiS_S_i' for 'sm_52'
+     ptxas info    : Function properties for _Z6MatMulPiS_S_i
+         0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+     ptxas info    : Used 32 registers, 348 bytes cmem[0]
 */
 const struct gpgpu_ptx_sim_info *ptx_sim_kernel_info(
     const function_info *kernel) {
@@ -3251,9 +3269,21 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   // scenario.
   //将Shader Core对象用于book keeping是不需要的，但由于大多数为性能模拟而构建的函数都需要它，所以我们
   //在这里使用它extern gpgpu_sim* g_the_gpu；在执行之前，应该对功能模拟场景进行PDOM（后支配者）分析。
+  
+  //kernel_func_info 指向 kernel 的入口。
   function_info *kernel_func_info = kernel.entry();
+  //kernel_info 指向 kernel 的PTX分析出的一些参数。例如：
+  //    int lmem;                 // local memory大小
+  //    int smem;                 // shared memory大小
+  //    int cmem;                 // constant memory大小
+  //    int gmem;                 // global memory大小
+  //    int regs;                 // 寄存器数量
+  //    unsigned maxthreads;      // 最大线程数
+  //    unsigned ptx_version;     // PTX version
+  //    unsigned sm_target;       // 目标 SM
   const struct gpgpu_ptx_sim_info *kernel_info =
       ptx_sim_kernel_info(kernel_func_info);
+  //检查点，保存全局存储的状态，暂时没什么用。
   checkpoint *g_checkpoint;
   g_checkpoint = new checkpoint();
 

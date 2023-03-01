@@ -213,14 +213,13 @@ class kernel_info_t {
       std::map<std::string, const struct textureInfo *> nameToTextureInfo);
   ~kernel_info_t();
 
-  /* 
-  m_num_cores_running是一个Core计数器，它是一个全局变量，用于跟踪当前正在运行的GPU Core的数量，并确
-  定GPU是否可以接受新的任务。下面的函数中：
-    inc_running()增加一个正在运行的Core，将m_num_cores_running加1；
-    dec_running()减少一个正在运行的Core，首先判断m_num_cores_running是否大于0，继而减1；
-    running()返回是否有正在运行的Core，True 或 False；
-    done()
-  */
+  
+  //m_num_cores_running是一个Core计数器，它是一个全局变量，用于跟踪当前正在运行的GPU Core的数量，
+  //并确定GPU是否可以接受新的任务。下面的函数中：
+  //  inc_running()增加一个正在运行的Core，将m_num_cores_running加1；
+  //  dec_running()减少一个正在运行的Core，首先判断m_num_cores_running是否大于0，继而减1；
+  //  running()返回是否有正在运行的Core，True 或 False；
+  //  done()返回没有更多的CTA去运行，m_num_cores_running的值也为零。
   void inc_running() { m_num_cores_running++; }
   void dec_running() {
     assert(m_num_cores_running > 0);
@@ -228,6 +227,7 @@ class kernel_info_t {
   }
   bool running() const { return m_num_cores_running > 0; }
   bool done() const { return no_more_ctas_to_run() && !running(); }
+  //返回一个kernel的入口函数，m_kernel_entry是 function_info 对象。
   class function_info *entry() {
     return m_kernel_entry;
   }
@@ -241,35 +241,35 @@ class kernel_info_t {
   size_t threads_per_cta() const {
     return m_block_dim.x * m_block_dim.y * m_block_dim.z;
   }
-
+  //返回CUDA代码中的Grid的三个维度，一个dim3数据类型。
   dim3 get_grid_dim() const { return m_grid_dim; }
+  //返回CTA的三个维度，一个dim3数据类型。
   dim3 get_cta_dim() const { return m_block_dim; }
-
+  //在 cuda-sim.cc 中有用到，比如当一个CTA不满足执行条件，因此需要选择下个CTA，通过指定下一个CTA
+  //的编号增加来实现，但是要考虑dim3的三维结构，超过其边界时，置零并增加下一维。下面的函数是将[下
+  //一个CTA]的编号向后推一个；在推后时，由于更换了一个CTA，需要将线程ID的三维全部置零。
   void increment_cta_id() {
     increment_x_then_y_then_z(m_next_cta, m_grid_dim);
     m_next_tid.x = 0;
     m_next_tid.y = 0;
     m_next_tid.z = 0;
   }
+  //获取下一个要执行的CTA的ID。
   dim3 get_next_cta_id() const { return m_next_cta; }
-  /*
-  获取下一个要发射的CTA的ID。CTA的全局ID与CUDA编程模型中的线程块索引类似，其ID算法如下：
-  ID = m_next_cta.x + m_grid_dim.x * m_next_cta.y +
-       m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
-  */
+  //获取下一个要发射的CTA的ID。CTA的全局ID与CUDA编程模型中的线程块索引类似，其ID算法如下：
+  //ID = m_next_cta.x + m_grid_dim.x * m_next_cta.y +
+  //     m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
   unsigned get_next_cta_id_single() const {
     return m_next_cta.x + m_grid_dim.x * m_next_cta.y +
            m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
   }
-  /* 
-  m_next_cta是用于标识下一个要发射的CTA（Compute Thread Array）的变量，它的值是一个全局ID，属于
-  dim3类型，具有.x/.y/.z三个分值。GPU硬件配置的CTA的全局ID的范围为：
-      m_next_cta.x < m_grid_dim.x &&
-      m_next_cta.y < m_grid_dim.y &&
-      m_next_cta.z < m_grid_dim.z
-  因此如果标识下一个要发射的CTA的全局ID的任意一维超过对应范围，就代表硬件上已经没有CTA可用，这些CTA
-  全部在执行过程中。
-  */
+  //m_next_cta是用于标识下一个要发射的CTA（Compute Thread Array）的变量，它的值是一个全局ID，属
+  //于dim3类型，具有.x/.y/.z三个分值。GPU硬件配置的CTA的全局ID的范围为：
+  //    m_next_cta.x < m_grid_dim.x &&
+  //    m_next_cta.y < m_grid_dim.y &&
+  //    m_next_cta.z < m_grid_dim.z
+  //因此如果标识下一个要发射的CTA的全局ID的任意一维超过对应范围，就代表硬件上已经没有CTA可用，这些
+  //CTA全部在执行过程中。
   bool no_more_ctas_to_run() const {
     return (m_next_cta.x >= m_grid_dim.x || m_next_cta.y >= m_grid_dim.y ||
             m_next_cta.z >= m_grid_dim.z);
@@ -328,9 +328,8 @@ class kernel_info_t {
 
   dim3 m_grid_dim;
   dim3 m_block_dim;
-  /*
-  m_next_cta是用于标识下一个要执行的CTA（Compute Thread Array）的变量
-  */
+  
+  //m_next_cta是用于标识下一个要执行的CTA（Compute Thread Array）的变量
   dim3 m_next_cta;
   dim3 m_next_tid;
 

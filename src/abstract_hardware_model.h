@@ -246,17 +246,17 @@ class kernel_info_t {
   //返回CTA的三个维度，一个dim3数据类型。
   dim3 get_cta_dim() const { return m_block_dim; }
   //在 cuda-sim.cc 中有用到，比如当一个CTA不满足执行条件，因此需要选择下个CTA，通过指定下一个CTA
-  //的编号增加来实现，但是要考虑dim3的三维结构，超过其边界时，置零并增加下一维。下面的函数是将[下
-  //一个CTA]的编号向后推一个；在推后时，由于更换了一个CTA，需要将线程ID的三维全部置零。
+  //的编号增加来实现，但是要考虑dim3的三维结构，超过其边界时，置零并增加下一维。下面的函数是将[要
+  //执行的下一个CTA]的编号向后推一个；在推后时，由于更换了一个CTA，需要将线程ID的三维全部置零。
   void increment_cta_id() {
     increment_x_then_y_then_z(m_next_cta, m_grid_dim);
     m_next_tid.x = 0;
     m_next_tid.y = 0;
     m_next_tid.z = 0;
   }
-  //获取下一个要执行的CTA的ID。
+  //获取下一个要执行的CTA其网格中的ID，一个dim3数据类型。
   dim3 get_next_cta_id() const { return m_next_cta; }
-  //获取下一个要发射的CTA的ID。CTA的全局ID与CUDA编程模型中的线程块索引类似，其ID算法如下：
+  //获取下一个要发射的CTA的索引。CTA的全局索引与CUDA编程模型中的线程块索引类似，其ID算法如下：
   //ID = m_next_cta.x + m_grid_dim.x * m_next_cta.y +
   //     m_grid_dim.x * m_grid_dim.y * m_next_cta.z;
   unsigned get_next_cta_id_single() const {
@@ -274,39 +274,45 @@ class kernel_info_t {
     return (m_next_cta.x >= m_grid_dim.x || m_next_cta.y >= m_grid_dim.y ||
             m_next_cta.z >= m_grid_dim.z);
   }
-
+  //下面的函数是将[要执行的下一个线程]的编号向后推一个。
   void increment_thread_id() {
     increment_x_then_y_then_z(m_next_tid, m_block_dim);
   }
+  //获取下一个要执行的线程在其线程块中的ID，一个dim3数据类型。
   dim3 get_next_thread_id_3d() const { return m_next_tid; }
+  //返回下一个要执行的线程的索引。
   unsigned get_next_thread_id() const {
     return m_next_tid.x + m_block_dim.x * m_next_tid.y +
            m_block_dim.x * m_block_dim.y * m_next_tid.z;
   }
+  //返回当前CTA中是否有更多的线程待执行。
   bool more_threads_in_cta() const {
     return m_next_tid.z < m_block_dim.z && m_next_tid.y < m_block_dim.y &&
            m_next_tid.x < m_block_dim.x;
   }
+  //返回当前 kernel_info_t 对象的唯一标识号。
   unsigned get_uid() const { return m_uid; }
   std::string name() const;
-
+  //m_active_threads的定义：
+  //    std::list<class ptx_thread_info *> m_active_threads;
+  //是一个列表，保存了活跃线程。下面的函数返回该活跃线程的列表。
   std::list<class ptx_thread_info *> &active_threads() {
     return m_active_threads;
   }
+  
   class memory_space *get_param_memory() {
     return m_param_mem;
   }
 
   // The following functions access texture bindings present at the kernel's
   // launch
-
   const struct cudaArray *get_texarray(const std::string &texname) const {
     std::map<std::string, const struct cudaArray *>::const_iterator t =
         m_NameToCudaArray.find(texname);
     assert(t != m_NameToCudaArray.end());
     return t->second;
   }
-
+  //纹理缓存相关，后面用到再补充。
   const struct textureInfo *get_texinfo(const std::string &texname) const {
     std::map<std::string, const struct textureInfo *>::const_iterator t =
         m_NameToTextureInfo.find(texname);

@@ -618,11 +618,14 @@ void function_info::connect_basic_blocks()  // iterate across m_basic_blocks of
                                             // function, connecting basic blocks
                                             // together
 {
+  //代码基本块（basic block）迭代器。
   std::vector<basic_block_t *>::iterator bb_itr;
   std::vector<basic_block_t *>::iterator bb_target_itr;
+  //m_basic_blocks的出口基本块。
   basic_block_t *exit_bb = m_basic_blocks.back();
 
   // start from first basic block, which we know is the entry point
+  //从第一个基本块开始，我们知道这是切入点。
   bb_itr = m_basic_blocks.begin();
   for (bb_itr = m_basic_blocks.begin(); bb_itr != m_basic_blocks.end();
        bb_itr++) {

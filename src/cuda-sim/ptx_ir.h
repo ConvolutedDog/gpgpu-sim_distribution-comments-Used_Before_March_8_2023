@@ -970,13 +970,22 @@ class operand_info {
 };
 
 extern const char *g_opcode_string[];
+
+/*
+PTX指令代码块的基本块。
+*/
 struct basic_block_t {
   basic_block_t(unsigned ID, ptx_instruction *begin, ptx_instruction *end,
                 bool entry, bool ex) {
+    //basic block的唯一标识。
     bb_id = ID;
+    //ptx_begin是该基本块的首条PTX指令。
     ptx_begin = begin;
+    //ptx_end是该基本块的末尾PTX指令。
     ptx_end = end;
+    //is_entry标志该基本块是否是入口处的基本块。
     is_entry = entry;
+    //is_exit标志该基本块是否是出口处的基本块。
     is_exit = ex;
     immediatepostdominator_id = -1;
     immediatedominator_id = -1;
@@ -1574,7 +1583,37 @@ class function_info {
     assert(m_kernel_info.maxthreads == maxnt_id);
     return &m_kernel_info;
   }
-
+  //设置 kernel 的信息，m_kernel_info包括：Registers/shmem/etc. used (from ptxas -v), loaded 
+  //from ___.ptxinfo along with ___.ptx。例如，cuda_codes/myTest/文件夹下面的PTX文件：
+  //    .version 7.5
+  //    .target sm_52
+  //    .address_size 64
+  //    .visible .entry _Z6MatMulPiS_S_i(
+  //        .param .u64 _Z6MatMulPiS_S_i_param_0,
+  //        .param .u64 _Z6MatMulPiS_S_i_param_1,
+  //        .param .u64 _Z6MatMulPiS_S_i_param_2,
+  //        .param .u32 _Z6MatMulPiS_S_i_param_3
+  //    )
+  //    ......
+  //使用 ptxas 后，PTXAS文件：
+  //    ptxas info    : 0 bytes gmem
+  //    ptxas info    : Compiling entry function '_Z6MatMulPiS_S_i' for 'sm_52'
+  //    ptxas info    : Function properties for _Z6MatMulPiS_S_i
+  //        0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+  //    ptxas info    : Used 32 registers, 348 bytes cmem[0]
+  //gpgpu_ptx_sim_info的定义：
+  //    struct gpgpu_ptx_sim_info {
+  //        // Holds properties of the kernel (Kernel's resource use).
+  //        // These will be set to zero if a ptxinfo file is not present.
+  //        int lmem;
+  //        int smem;
+  //        int cmem;
+  //        int gmem;
+  //        int regs;
+  //        unsigned maxthreads;
+  //        unsigned ptx_version;
+  //        unsigned sm_target;
+  //    };
   virtual const void set_kernel_info(const struct gpgpu_ptx_sim_info &info) {
     m_kernel_info = info;
     m_kernel_info.ptx_version = 10 * get_ptx_version().ver();

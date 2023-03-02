@@ -2977,8 +2977,8 @@ __host__ cudaError_t CUDARTAPI cudaGetExportTable(
 #endif
 
 /*******************************************************************************
- * This is the old function of extract_ptx_files_using_cuobjdump, yangjianchao16
- * changed it. This is the bak.
+ * This is the old function of extract_ptx_files_using_cuobjdump, we changed it. 
+ * This is the bak.
 // void cuda_runtime_api::extract_ptx_files_using_cuobjdump(CUctx_st *context) {
 //   char command[1000];
 //   char *pytorch_bin = getenv("PYTORCH_BIN");
@@ -3057,9 +3057,9 @@ __host__ cudaError_t CUDARTAPI cudaGetExportTable(
 
 /*
 Because the old function will always use cuobjdump to repeatedly dump PTX from .so files, even
-you export CUOBJDUMP_SIM_FILE=_cuobjdump_list_ptx_ItY8Zz. So, yangjianchao16 changed this func-
-tion into the version of not repeatedly dumpping, as long as you do export CUOBJDUMP_SIM_FILE.
-And if you really want to repeatedly dump PTX from .so files, just do this NULL-export action:
+you export CUOBJDUMP_SIM_FILE=_cuobjdump_list_ptx_ItY8Zz. So, we changed this function into the
+version of not repeatedly dumpping, as long as you do export CUOBJDUMP_SIM_FILE. And if you rea-
+lly want to repeatedly dump PTX from .so files, just do this NULL-export action:
     export CUOBJDUMP_SIM_FILE=
 */
 void cuda_runtime_api::extract_ptx_files_using_cuobjdump(CUctx_st *context) {

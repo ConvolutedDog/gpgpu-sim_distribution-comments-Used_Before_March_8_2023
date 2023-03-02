@@ -627,18 +627,37 @@ void function_info::connect_basic_blocks()  // iterate across m_basic_blocks of
   // start from first basic block, which we know is the entry point
   //从第一个基本块开始，我们知道这是切入点。
   bb_itr = m_basic_blocks.begin();
+  //对每个代码基本块循环。
   for (bb_itr = m_basic_blocks.begin(); bb_itr != m_basic_blocks.end();
        bb_itr++) {
+    //pI 指向的是当前基本块的 ptx_end 末尾指令。
     ptx_instruction *pI = (*bb_itr)->ptx_end;
+    //(*bb_itr)->is_exit为真标志着，当前基本块是整个 function_info 的最后一个基本块，即出口点。
+    //它的 ptx_end 不需要连接。
     if ((*bb_itr)->is_exit)  // reached last basic block, no successors to link
       continue;
+    //ret指令：
+    //    将执行返回到调用方的环境。发散返回将挂起线程，直到所有线程都准备好返回调用方。这允许多
+    //    个不同的ret指令。常用方法：
+    //           ret;
+    //        @p ret;
+    //exit指令：
+    //    结束线程的执行。当线程退出时，系统将检查等待所有线程的障碍，以查看退出的线程是否是尚未
+    //    到达barrier{.cta}（CTA中的所有线程）或barrier.cluster（群集中的所有线程）的唯一线程。
+    //    如果退出线程阻挡了屏障，则释放屏障。常用方法：
+    //           exit;
+    //        @p exit;
     if (pI->get_opcode() == RETP_OP || pI->get_opcode() == RET_OP ||
         pI->get_opcode() == EXIT_OP) {
+      //当前基本块 bb_itr 的后继者是 exit_bb。
       (*bb_itr)->successor_ids.insert(exit_bb->bb_id);
+      //exit_bb 的前继者是 当前基本块 bb_itr。
       exit_bb->predecessor_ids.insert((*bb_itr)->bb_id);
+      //如果 retp、ret、exit 指令有谓词寄存器，说明还有接下来一个基本块。
       if (pI->has_pred()) {
         printf("GPGPU-Sim PTX: Warning detected predicated return/exit.\n");
         // if predicated, add link to next block
+        //通过 pI 在指令存储中的索引找下一条指令所在的基本块，连接过程同上。
         unsigned next_addr = pI->get_m_instr_mem_index() + pI->inst_size();
         if (next_addr < m_instr_mem_size && m_instr_mem[next_addr]) {
           basic_block_t *next_bb = m_instr_mem[next_addr]->get_bb();
@@ -648,6 +667,7 @@ void function_info::connect_basic_blocks()  // iterate across m_basic_blocks of
       }
       continue;
     } else if (pI->get_opcode() == BRA_OP) {
+      //带谓词寄存器的 bra 指令的连接。
       // find successor and link that basic_block to this one
       operand_info &target = pI->dst();  // get operand, e.g. target name
       unsigned addr = labels[target.name()];
@@ -661,6 +681,7 @@ void function_info::connect_basic_blocks()  // iterate across m_basic_blocks of
       // if basic block does not end in an unpredicated branch,
       // then next basic block is also successor
       // (this is better than testing for .uni)
+      //带谓词寄存器的 bra 指令的连接，非预测跳转。
       unsigned next_addr = pI->get_m_instr_mem_index() + pI->inst_size();
       basic_block_t *next_bb = m_instr_mem[next_addr]->get_bb();
       (*bb_itr)->successor_ids.insert(next_bb->bb_id);
@@ -669,6 +690,7 @@ void function_info::connect_basic_blocks()  // iterate across m_basic_blocks of
       assert(pI->get_opcode() == BRA_OP);
   }
 }
+
 bool function_info::connect_break_targets()  // connecting break instructions
                                              // with proper targets
 {

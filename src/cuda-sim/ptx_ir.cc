@@ -741,7 +741,10 @@ bool function_info::connect_break_targets()  // connecting break instructions
 
   return modified;
 }
-//执行PDOM（分支处理中的后支配者）检测。
+
+/*
+执行PDOM（分支处理中的后必经结点）检测。
+*/
 void function_info::do_pdom() {
   //将各个指令分组为基本块（basic_block_t）。
   create_basic_blocks();
@@ -749,7 +752,9 @@ void function_info::do_pdom() {
   connect_basic_blocks();
   bool modified = false;
   do {
+    //寻找一个函数的完整PTX指令中，每一个（基本块）结点的必经结点（dominators）。
     find_dominators();
+    //寻找一个函数的完整PTX指令中，每一个（基本块）结点的直接必经结点（immediate dominators）。
     find_idominators();
     modified = connect_break_targets();
   } while (modified == true);
@@ -762,7 +767,9 @@ void function_info::do_pdom() {
   if (g_debug_execution >= 2) {
     print_dominators();
   }
+  //寻找一个函数的完整PTX指令中，每一个（基本块）结点的后必经结点（post-dominators）。
   find_postdominators();
+  //寻找一个函数的完整PTX指令中，每一个（基本块）结点的直接后必经结点（immediate post-dominators）。
   find_ipostdominators();
   if (g_debug_execution >= 50) {
     print_postdominators();
@@ -770,6 +777,7 @@ void function_info::do_pdom() {
   }
   printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n",
          m_name.c_str());
+  //对m_instr_mem中的每一条指令进行预处理。
   for (unsigned ii = 0; ii < m_n;
        ii += m_instr_mem[ii]->inst_size()) {  // handle branch instructions
     ptx_instruction *pI = m_instr_mem[ii];
@@ -780,6 +788,7 @@ void function_info::do_pdom() {
   fflush(stdout);
   m_assembled = true;
 }
+
 void intersect(std::set<int> &A, const std::set<int> &B) {
   // return intersection of A and B in A
   for (std::set<int>::iterator a = A.begin(); a != A.end();) {
@@ -808,20 +817,69 @@ void print_set(const std::set<int> &A) {
   printf("\n");
 }
 
+/*
+必经结点（dominators）：如果从entry结点到结点i的每一条可能的执行路径都包含d，则结点d是结点i的必经结
+                       点，记为d dom i。
+直接必经结点（immediate dominators）：对于a≠b，当且仅当a dom b且不存在一个c≠a且c≠b的结点c，使得a 
+                                     dom c且c dom b，则称a是b的直接必经结点，记为a idom b。
+后必经结点（post-dominator）：从结点i到exit结点的每一条可能的执行路径都包含p，则结点p是结点i的后必经
+                             结点，记为p pdom i。
+寻找一个函数的完整PTX指令中，每一个（基本块）结点的必经结点（dominators）。例如，下述基本块之间的连接
+图：
+           entry
+            \|/
+   <———Yes—— B1 ——No———>
+ \|/                   \|/
+  B2                    B3
+  |                    \|/
+  |            <——No——— B4 <—
+  |            |       \|/   |
+  |            |       Yes   |
+  |           \|/      \|/   |
+  |            B5       B6 ——
+ \|/__________\|/
+       \|/
+       exit
+它的每一个基本块的必经结点集合为：
+    i     |    Domin(i)
+    entry |    {entry}
+    B1    |    {entry,B1}
+    B2    |    {entry,B1,B2}
+    B3    |    {entry,B1,B3}
+    B4    |    {entry,B1,B3,B4}
+    B5    |    {entry,B1,B3,B4,B5}
+    B6    |    {entry,B1,B3,B4,B6}
+    exit  |    {entry,B1,exit}
+*/
 void function_info::find_dominators() {
   // find dominators using algorithm of Muchnick's Adv. Compiler Design &
   // Implemmntation Fig 7.14
+  //使用了《高级编译器设计与实现(Steven.S.Muchnick著)》的图7.14中的算法。
   printf("GPGPU-Sim PTX: Finding dominators for \'%s\'...\n", m_name.c_str());
   fflush(stdout);
   assert(m_basic_blocks.size() >= 2);  // must have a distinquished entry block
+  //基本块的迭代器。
   std::vector<basic_block_t *>::iterator bb_itr = m_basic_blocks.begin();
+  //首先，bb_itr指向的是函数的入口基本块，这个入口基本块的必经结点集合中只有其自己。
   (*bb_itr)->dominator_ids.insert(
       (*bb_itr)->bb_id);  // the only dominator of the entry block is the entry
   // copy all basic blocks to all dominator lists EXCEPT for the entry block
+  //依据图7.14中算法，初始化除入口基本块的其余所有基本块的必经结点集合，将其初始化为所有的基本块。即，
+  //例如一个程序流图中有entry基本块、exit基本块、以及A/B基本块，初始化exit基本块、A基本块、B基本块的
+  //的必经结点集合为{entry基本块、exit基本块、A基本块、B基本块}。
   for (++bb_itr; bb_itr != m_basic_blocks.end(); bb_itr++) {
+    //将所有基本块都加入到除entry基本块外所有基本块的必经结点集合中。
     for (unsigned i = 0; i < m_basic_blocks.size(); i++)
       (*bb_itr)->dominator_ids.insert(i);
   }
+  //以下是图7.14中算法的主体，书在腾讯文档GPGPU-Sim文档后面。下述各参数分别对应算法里的内容如下：
+  //    [HERE]                            | [BOOK]
+  //    change                            | change
+  //    m_basic_blocks[h]                 | 结点n
+  //    h                                 | 结点n的id
+  //    std::set<int> T                   | T
+  //    std::set<int>::iterator s         | p的id
+  //    m_basic_blocks[*s]->dominator_ids | Domin(p)
   bool change = true;
   while (change) {
     change = false;
@@ -842,12 +900,47 @@ void function_info::find_dominators() {
   }
   // clean the basic block of dominators of it has no predecessors -- except for
   // entry block
+  //上面的代码对算法中有改动，这里去除非Pred(n)的结点的必经结点。
   bb_itr = m_basic_blocks.begin();
   for (++bb_itr; bb_itr != m_basic_blocks.end(); bb_itr++) {
     if ((*bb_itr)->predecessor_ids.empty()) (*bb_itr)->dominator_ids.clear();
   }
 }
 
+/*
+必经结点（dominators）：如果从entry结点到结点i的每一条可能的执行路径都包含d，则结点d是结点i的必经结
+                       点，记为d dom i。
+直接必经结点（immediate dominators）：对于a≠b，当且仅当a dom b且不存在一个c≠a且c≠b的结点c，使得a 
+                                     dom c且c dom b，则称a是b的直接必经结点，记为a idom b。
+后必经结点（post-dominator）：从结点i到exit结点的每一条可能的执行路径都包含p，则结点p是结点i的后必经
+                             结点，记为p pdom i。
+寻找一个函数的完整PTX指令中，每一个（基本块）结点的后必经结点（post-dominators）。例如，下述基本块之
+间的连接图：
+           entry
+            \|/
+   <———Yes—— B1 ——No———>
+ \|/                   \|/
+  B2                    B3
+  |                    \|/
+  |            <——No——— B4 <—
+  |            |       \|/   |
+  |            |       Yes   |
+  |           \|/      \|/   |
+  |            B5       B6 ——
+ \|/__________\|/
+       \|/
+       exit
+它的每一个基本块的后必经结点集合为：
+    i     |    Domin(i)
+    entry |    {exit,B1,entry}
+    B1    |    {exit,B1}
+    B2    |    {exit,B2}
+    B3    |    {exit,B5,B4,B3}
+    B4    |    {exit,B5,B4}
+    B5    |    {exit,B5}
+    B6    |    {exit,B5,B4,B6}
+    exit  |    {exit}
+*/
 void function_info::find_postdominators() {
   // find postdominators using algorithm of Muchnick's Adv. Compiler Design &
   // Implemmntation Fig 7.14
@@ -885,6 +978,14 @@ void function_info::find_postdominators() {
   }
 }
 
+/*
+必经结点（dominators）：如果从entry结点到结点i的每一条可能的执行路径都包含d，则结点d是结点i的必经结
+                       点，记为d dom i。
+直接必经结点（immediate dominators）：对于a≠b，当且仅当a dom b且不存在一个c≠a且c≠b的结点c，使得a 
+                                     dom c且c dom b，则称a是b的直接必经结点，记为a idom b。
+后必经结点（post-dominator）：从结点i到exit结点的每一条可能的执行路径都包含p，则结点p是结点i的后必经
+                             结点，记为p pdom i。
+*/
 void function_info::find_ipostdominators() {
   // find immediate postdominator blocks, using algorithm of
   // Muchnick's Adv. Compiler Design & Implemmntation Fig 7.15
@@ -936,6 +1037,40 @@ void function_info::find_ipostdominators() {
   // should
 }
 
+/*
+必经结点（dominators）：如果从entry结点到结点i的每一条可能的执行路径都包含d，则结点d是结点i的必经结
+                       点，记为d dom i。
+直接必经结点（immediate dominators）：对于a≠b，当且仅当a dom b且不存在一个c≠a且c≠b的结点c，使得a 
+                                     dom c且c dom b，则称a是b的直接必经结点，记为a idom b。
+后必经结点（post-dominator）：从结点i到exit结点的每一条可能的执行路径都包含p，则结点p是结点i的后必经
+                             结点，记为p pdom i。
+寻找一个函数的完整PTX指令中，每一个（基本块）结点的直接必经结点（immediate dominators）。例如，下述
+基本块之间的连接图：
+           entry
+            \|/
+   <———Yes—— B1 ——No———>
+ \|/                   \|/
+  B2                    B3
+  |                    \|/
+  |            <——No——— B4 <—
+  |            |       \|/   |
+  |            |       Yes   |
+  |           \|/      \|/   |
+  |            B5       B6 ——
+ \|/__________\|/
+       \|/
+       exit
+它的每一个基本块的直接必经结点集合为：
+    i     |    Domin(i)
+    entry |    NULL
+    B1    |    {entry}
+    B2    |    {B1}
+    B3    |    {B1}
+    B4    |    {B3}
+    B5    |    {B4}
+    B6    |    {B4}
+    exit  |    {B1}
+*/
 void function_info::find_idominators() {
   // find immediate dominator blocks, using algorithm of
   // Muchnick's Adv. Compiler Design & Implemmntation Fig 7.15

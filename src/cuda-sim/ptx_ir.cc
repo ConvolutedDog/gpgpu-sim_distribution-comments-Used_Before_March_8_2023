@@ -694,6 +694,7 @@ void function_info::connect_basic_blocks()  // iterate across m_basic_blocks of
 bool function_info::connect_break_targets()  // connecting break instructions
                                              // with proper targets
 {
+  //基本块迭代器。
   std::vector<basic_block_t *>::iterator bb_itr;
   std::vector<basic_block_t *>::iterator bb_target_itr;
   bool modified = false;
@@ -703,6 +704,7 @@ bool function_info::connect_break_targets()  // connecting break instructions
   for (bb_itr = m_basic_blocks.begin(); bb_itr != m_basic_blocks.end();
        bb_itr++) {
     basic_block_t *p_bb = *bb_itr;
+    //基本块的末尾指令。
     ptx_instruction *pI = p_bb->ptx_end;
     if (p_bb->is_exit)  // reached last basic block, no successors to link
       continue;
@@ -756,6 +758,7 @@ void function_info::do_pdom() {
     find_dominators();
     //寻找一个函数的完整PTX指令中，每一个（基本块）结点的直接必经结点（immediate dominators）。
     find_idominators();
+    //
     modified = connect_break_targets();
   } while (modified == true);
 

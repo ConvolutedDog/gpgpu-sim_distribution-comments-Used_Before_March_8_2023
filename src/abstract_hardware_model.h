@@ -213,13 +213,13 @@ class kernel_info_t {
       std::map<std::string, const struct textureInfo *> nameToTextureInfo);
   ~kernel_info_t();
 
-  
   //m_num_cores_running是一个Core计数器，它是一个全局变量，用于跟踪当前正在运行的GPU Core的数量，
   //并确定GPU是否可以接受新的任务。下面的函数中：
   //  inc_running()增加一个正在运行的Core，将m_num_cores_running加1；
   //  dec_running()减少一个正在运行的Core，首先判断m_num_cores_running是否大于0，继而减1；
   //  running()返回是否有正在运行的Core，True 或 False；
-  //  done()返回没有更多的CTA去运行，m_num_cores_running的值也为零。
+  //  done()返回没有更多的CTA去运行，m_num_cores_running的值也为零。即kernel_info_t已经完成它所
+  //        有CTA的执行。
   void inc_running() { m_num_cores_running++; }
   void dec_running() {
     assert(m_num_cores_running > 0);
@@ -268,8 +268,8 @@ class kernel_info_t {
   //    m_next_cta.x < m_grid_dim.x &&
   //    m_next_cta.y < m_grid_dim.y &&
   //    m_next_cta.z < m_grid_dim.z
-  //因此如果标识下一个要发射的CTA的全局ID的任意一维超过对应范围，就代表硬件上已经没有CTA可用，这些
-  //CTA全部在执行过程中。
+  //因此如果标识下一个要发射的CTA的全局ID的任意一维超过CUDA代码设置的Grid的对应范围，就代表内核函
+  //数上已经没有CTA可执行，内核函数的所有线程块均已经执行完毕。
   bool no_more_ctas_to_run() const {
     return (m_next_cta.x >= m_grid_dim.x || m_next_cta.y >= m_grid_dim.y ||
             m_next_cta.z >= m_grid_dim.z);

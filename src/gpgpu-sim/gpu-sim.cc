@@ -876,7 +876,7 @@ bool gpgpu_sim::hit_max_cta_count() const {
 ，则函数返回true；如果没有更多的CTA可以执行，则函数返回false。若已经达到GPU模拟过程中最大的CTA限制
 数（由gpgpu_sim::hit_max_cta_count()判断），则没有剩余的CTA，返回False；若kernel非空，且kernel->
 no_more_ctas_to_run()为false即kernel自己还可有多余CTA执行，则返回True。no_more_ctas_to_run()函数
-指示当前没有更多的CTA（Compute Thread Array）可以执行。
+指示当前没有更多的CTA（Compute Thread Array）可以执行。 
 */
 bool gpgpu_sim::kernel_more_cta_left(kernel_info_t *kernel) const {
   if (hit_max_cta_count()) return false;

@@ -1447,6 +1447,7 @@ class core_t {
   simt_stack **m_simt_stack;  // pdom based reconvergence context for each warp
   class ptx_thread_info **m_thread;
   unsigned m_warp_size;
+  //warp总数。
   unsigned m_warp_count;
   unsigned reduction_storage[MAX_CTA_PER_SHADER][MAX_BARRIERS_PER_CTA];
 };

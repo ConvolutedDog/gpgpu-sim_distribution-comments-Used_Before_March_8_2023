@@ -451,7 +451,9 @@ void function_info::ptx_assemble() {
    connect_basic_blocks();
    bool modified = false; 
    do {
+      //寻找一个函数的完整PTX指令中，每一个（基本块）结点的必经结点（dominators）。
       find_dominators();
+      //寻找一个函数的完整PTX指令中，每一个（基本块）结点的直接必经结点（immediate dominators）。
       find_idominators();
       modified = connect_break_targets(); 
    } while (modified == true);
@@ -464,7 +466,9 @@ void function_info::ptx_assemble() {
    if ( g_debug_execution>=2 ) {
       print_dominators();
    }
+   //寻找一个函数的完整PTX指令中，每一个（基本块）结点的后必经结点（post-dominators）。
    find_postdominators();
+   //寻找一个函数的完整PTX指令中，每一个（基本块）结点的直接后必经结点（immediate post-dominators）。
    find_ipostdominators();
    if ( g_debug_execution>=50 ) {
       print_postdominators();
@@ -472,6 +476,7 @@ void function_info::ptx_assemble() {
    }
 
    printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n", m_name.c_str() );
+   //对m_instr_mem中的每一条指令进行预处理。
    for ( unsigned ii=0; ii < n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
       ptx_instruction *pI = m_instr_mem[ii];
       pI->pre_decode();
@@ -3217,6 +3222,16 @@ unsigned max_cta(const struct gpgpu_ptx_sim_info *kernel_info,
   //依据寄存器个数，计算理论上每个Shader Core上的并发CTA的个数。
   unsigned int result_regs = (unsigned)-1;
   if (kernel_info->regs > 0)
+    //(kernel_info->regs + 3) & ~3)即为kernel_info->regs向上[4的倍数]取值。例如，如果regs等于：
+    //    regs | kernel_info->regs + 3 | (kernel_info->regs + 3) & ~3)
+    //     3   |   6='b0011+3='b00110  |      &'b11100='b00100=4
+    //     4   |   7='b0100+3='b00111  |      &'b11100='b00100=4
+    //     5   |   8='b0101+3='b01000  |      &'b11100='b01000=8
+    //     6   |   9='b0110+3='b01001  |      &'b11100='b01000=8
+    //     7   |  10='b0111+3='b01010  |      &'b11100='b01000=8
+    //     8   |  11='b1000+3='b01011  |      &'b11100='b01000=8
+    //     9   |  12='b1001+3='b01100  |      &'b11100='b01100=12
+    //     10  |  13='b1010+3='b01101  |      &'b11100='b01100=12
     result_regs = gpgpu_shader_registers /
                   (padded_cta_size * ((kernel_info->regs + 3) & ~3));
   printf("padded cta size is %d and %d and %d", padded_cta_size,
@@ -3362,7 +3377,8 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
 #endif
     } else {
       //CTA不满足执行条件，则由于temp标识的CTA已经在执行了，因此需要选择下一个CTA，通过指定下一个CTA
-      //的编号增加来实现，但是要考虑m_grid_dim的三维结构，超过其边界时，置零并增加下一维。
+      //的编号增加来实现，但是要考虑m_grid_dim的三维结构，超过其边界时，置零并增加下一维。但是从代码看，
+      //这一句没执行到。
       kernel.increment_cta_id();
     }
 
@@ -3866,7 +3882,8 @@ address_type cuda_sim::get_converge_point(address_type pc) {
 }
 
 /*
-退出执行所有的warp。m_warp_count是一个CTA中的warp总数。m_warp_size是一个warp内有多少线程。
+退出执行所有的warp。m_warp_count是一个CTA中的warp总数。m_warp_size是一个warp内有多少线程。warp_id
+在这里貌似没什么用。
 */
 void functionalCoreSim::warp_exit(unsigned warp_id) {
   for (int i = 0; i < m_warp_count * m_warp_size; i++) {

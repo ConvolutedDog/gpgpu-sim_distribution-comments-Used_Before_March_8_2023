@@ -2802,7 +2802,7 @@ unsigned ptx_sim_init_thread(kernel_info_t &kernel,
     return 1;
   }
 
-  //没有更多的CTA可执行，内核函数运行完毕。
+  //没有更多的CTA可执行，内核函数的所有线程块均已经执行完毕。
   if (kernel.no_more_ctas_to_run()) {
     return 0;  // finished!
   }
@@ -3347,9 +3347,9 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func(kernel_info_t &kernel,
   // functions work block wise
   //我们一次执行内核的一个CTA（块），因为同步函数按块工作。
   //no_more_ctas_to_run()在abstract_hardware_model.h中定义，其函数功能为：
-  //    判断是否GPU硬件上是否还有CTA可用。
-  //    如果标识下一个要发射的CTA的全局ID的任意一维，超过了GPU硬件配置的CTA的全局ID的范围，就代表硬件
-  //    上已经没有CTA可用，这些CTA全部在执行过程中。
+  //    判断kernel内核函数是否还有多余的CTA需要执行。
+  //    如果标识下一个要发射的CTA在内核函数设置的全局ID的任意一维，超过了CUDA代码配置的Grid的范围，就
+  //    代表kernel内核函数已经没有CTA可执行，内核函数的所有线程块均已经执行完毕。
   while (!kernel.no_more_ctas_to_run()) {
     //获取下一个要发射的CTA的ID。其ID算法如下：
     //    ID = m_next_cta.x + m_grid_dim.x * m_next_cta.y +
